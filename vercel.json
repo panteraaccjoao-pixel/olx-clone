@@ -6,13 +6,6 @@
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/9bkp", "destination": "/api/index.js" },
-    { "source": "/checkout", "destination": "/api/index.js" },
-    { "source": "/pix", "destination": "/api/index.js" },
-    { "source": "/perfil", "destination": "/api/index.js" },
-    { "source": "/$", "destination": "/api/index.js" },
-    { "source": "/iphone-17-branco-olx.html", "destination": "/api/index.js" },
-    { "source": "/index.html", "destination": "/api/index.js" }
+    { "source": "/(.*)", "destination": "/api/index.js" }
   ]
 }
