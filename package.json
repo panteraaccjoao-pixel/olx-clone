@@ -1,0 +1,12 @@
+{
+  "name": "olx-clone-project",
+  "version": "1.0.0",
+  "description": "Clone OLX completo com painel administrativo (/9bkp), checkout Pix dinâmico e integração VulcanoPay",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["olx", "clone", "pix", "ecommerce"],
+  "author": "",
+  "license": "ISC"
+}
