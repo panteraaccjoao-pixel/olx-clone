@@ -41,19 +41,26 @@ function renderAdHtml(rawHtml, config) {
   }
 
   // 3. Meta Tags
+  const safeTitle = (p.title || '').replace(/"/g, '&quot;');
   if (p.title) {
-    html = html.replace(/(<meta\s+property="og:title"\s+content=")([^"]*)(")/gi, `$1${p.title}$3`);
-    html = html.replace(/(<meta\s+name="twitter:title"\s+content=")([^"]*)(")/gi, `$1${p.title}$3`);
+    html = html.replace(/<meta\s+property=["']?og:title["']?\s+content=[^>]+>/gi, `<meta property="og:title" content="${safeTitle}">`);
+    html = html.replace(/<meta\s+name=["']?twitter:title["']?\s+content=[^>]+>/gi, `<meta name="twitter:title" content="${safeTitle}">`);
   }
   if (p.description) {
     const plainDesc = p.description.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
-    html = html.replace(/(<meta\s+name="description"\s+content=")([^"]*)(")/gi, `$1${plainDesc}$3`);
-    html = html.replace(/(<meta\s+property="og:description"\s+content=")([^"]*)(")/gi, `$1${plainDesc}$3`);
-    html = html.replace(/(<meta\s+name="twitter:description"\s+content=")([^"]*)(")/gi, `$1${plainDesc}$3`);
+    html = html.replace(/<meta\s+name=["']?description["']?\s+content=[^>]+>/gi, `<meta name="description" content="${plainDesc}">`);
+    html = html.replace(/<meta\s+property=["']?og:description["']?\s+content=[^>]+>/gi, `<meta property="og:description" content="${plainDesc}">`);
+    html = html.replace(/<meta\s+name=["']?twitter:description["']?\s+content=[^>]+>/gi, `<meta name="twitter:description" content="${plainDesc}">`);
   }
-  if (p.images && p.images[0]) {
-    html = html.replace(/(<meta\s+property="og:image"\s+content=")([^"]*)(")/gi, `$1${p.images[0]}$3`);
-  }
+  // Strip all preview images and cards so link preview shows only the title
+  html = html.replace(/<meta\s+property=["']?og:image(?::\w+)?["']?\s+content=[^>]+>/gi, '');
+  html = html.replace(/<meta\s+content=[^>]+\s+property=["']?og:image(?::\w+)?["']?>/gi, '');
+  html = html.replace(/<meta\s+name=["']?twitter:image(?::\w+)?["']?\s+content=[^>]+>/gi, '');
+  html = html.replace(/<meta\s+content=[^>]+\s+name=["']?twitter:image(?::\w+)?["']?>/gi, '');
+  html = html.replace(/<meta\s+name=["']?twitter:card["']?\s+content=[^>]+>/gi, '');
+  html = html.replace(/<link\s+rel=["']?image_src["']?\s+href=[^>]+>/gi, '');
+  html = html.replace(/"image":\s*\[[\s\S]*?\](?=,\s*"offers")/gi, '"image":[]');
+  html = html.replace(/\/63\/630653332183373\.jpg/gi, '');
 
   // 4. Preço Principal
   html = html.replace(/(class="[^"]*typo-title-large[^"]*"[^>]*>)([\s\S]*?)(<\/(?:span|div|h2)>)/gi, `$1${formattedPrice}$3`);
