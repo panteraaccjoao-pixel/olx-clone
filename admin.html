@@ -1550,6 +1550,55 @@
               <textarea id="prod-desc" rows="6" placeholder="Insira todos os detalhes do produto, garantia, estado da bateria..."></textarea>
               <div class="hint">Quebras de linha serão preservadas no anúncio da OLX.</div>
             </div>
+
+            <!-- ============================================== -->
+            <!-- CARACTERÍSTICAS E DETALHES (PC & MOBILE) -->
+            <!-- ============================================== -->
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--card-border);">
+              <div style="margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
+                  <span>📋</span> Características e Detalhes do Anúncio (Cards PC & Celular)
+                </h3>
+                <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+                  Personalize os cartões exibidos no grid de detalhes do anúncio tanto no PC quanto no Celular (marca, modelo, cor, capacidade, etc.).
+                </p>
+              </div>
+
+              <div class="grid-3">
+                <div class="form-group">
+                  <label>Marca</label>
+                  <input type="text" id="prod-brand" placeholder="Ex: Brastemp, Apple, Samsung" oninput="updateLivePreview()">
+                </div>
+                <div class="form-group">
+                  <label>Modelo</label>
+                  <input type="text" id="prod-model" placeholder="Ex: Ative Inox Duplex Frost Free, iPhone 17 Pro" oninput="updateLivePreview()">
+                </div>
+                <div class="form-group">
+                  <label>Cor</label>
+                  <input type="text" id="prod-color" placeholder="Ex: Inox, Azul, Preto, Branco" oninput="updateLivePreview()">
+                </div>
+              </div>
+
+              <div class="grid-3" style="margin-top: 12px;">
+                <div class="form-group">
+                  <label>Memória / Capacidade / Litros</label>
+                  <input type="text" id="prod-storage" placeholder="Ex: 429 Litros, 256gb, 128gb (opcional)" oninput="updateLivePreview()">
+                  <div class="hint">Deixe em branco caso não queira exibir este card.</div>
+                </div>
+                <div class="form-group">
+                  <label>Saúde da Bateria / Detalhes Extras</label>
+                  <input type="text" id="prod-extra-detail" placeholder="Ex: 110V / 220V, Perfeita (98%) (opcional)" oninput="updateLivePreview()">
+                  <div class="hint">Deixe em branco caso não queira exibir este card.</div>
+                </div>
+                <div class="form-group">
+                  <label>Aceita Trocas?</label>
+                  <select id="prod-accept-trades" onchange="updateLivePreview()">
+                    <option value="Não">Não</option>
+                    <option value="Sim">Sim</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -1951,6 +2000,15 @@
       document.getElementById('prod-condition').value = p.condition || 'Usado - Excelente';
       document.getElementById('prod-desc').value = p.description || '';
 
+      // Details cards
+      const d = p.details || {};
+      if (document.getElementById('prod-brand')) document.getElementById('prod-brand').value = d.brand || p.brand || 'Brastemp';
+      if (document.getElementById('prod-model')) document.getElementById('prod-model').value = d.model || p.model || 'Ative Inox Duplex Frost Free';
+      if (document.getElementById('prod-color')) document.getElementById('prod-color').value = d.color || p.color || 'Inox';
+      if (document.getElementById('prod-storage')) document.getElementById('prod-storage').value = d.storage || p.storage || '';
+      if (document.getElementById('prod-extra-detail')) document.getElementById('prod-extra-detail').value = d.extra || p.extra || '';
+      if (document.getElementById('prod-accept-trades')) document.getElementById('prod-accept-trades').value = d.acceptTrades || p.acceptTrades || 'Não';
+
       // Photos
       localImages = Array.isArray(p.images) ? [...p.images] : [];
       renderPhotosList();
@@ -2238,6 +2296,21 @@
           date: document.getElementById('prod-date').value.trim(),
           condition: document.getElementById('prod-condition').value.trim(),
           description: document.getElementById('prod-desc').value.trim(),
+          brand: document.getElementById('prod-brand') ? document.getElementById('prod-brand').value.trim() : 'Brastemp',
+          model: document.getElementById('prod-model') ? document.getElementById('prod-model').value.trim() : 'Ative Inox Duplex Frost Free',
+          color: document.getElementById('prod-color') ? document.getElementById('prod-color').value.trim() : 'Inox',
+          storage: document.getElementById('prod-storage') ? document.getElementById('prod-storage').value.trim() : '',
+          extra: document.getElementById('prod-extra-detail') ? document.getElementById('prod-extra-detail').value.trim() : '',
+          acceptTrades: document.getElementById('prod-accept-trades') ? document.getElementById('prod-accept-trades').value.trim() : 'Não',
+          details: {
+            brand: document.getElementById('prod-brand') ? document.getElementById('prod-brand').value.trim() : 'Brastemp',
+            model: document.getElementById('prod-model') ? document.getElementById('prod-model').value.trim() : 'Ative Inox Duplex Frost Free',
+            condition: document.getElementById('prod-condition').value.trim(),
+            color: document.getElementById('prod-color') ? document.getElementById('prod-color').value.trim() : 'Inox',
+            storage: document.getElementById('prod-storage') ? document.getElementById('prod-storage').value.trim() : '',
+            extra: document.getElementById('prod-extra-detail') ? document.getElementById('prod-extra-detail').value.trim() : '',
+            acceptTrades: document.getElementById('prod-accept-trades') ? document.getElementById('prod-accept-trades').value.trim() : 'Não'
+          },
           images: localImages
         },
         seller: {

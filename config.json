@@ -16,7 +16,22 @@
       "/images/uploads/1791748114408-IMG_0396.png",
       "/images/uploads/1791748116638-IMG_0397.png",
       "/images/uploads/1791748118944-IMG_0398.png"
-    ]
+    ],
+    "details": {
+      "brand": "Brastemp",
+      "model": "Ative Inox Duplex Frost Free",
+      "condition": "Usado - Excelente",
+      "color": "Inox",
+      "storage": "429 Litros",
+      "extra": "Frost Free Duplex",
+      "acceptTrades": "Não"
+    },
+    "brand": "Brastemp",
+    "model": "Ative Inox Duplex Frost Free",
+    "color": "Inox",
+    "storage": "429 Litros",
+    "extra": "Frost Free Duplex",
+    "acceptTrades": "Não"
   },
   "seller": {
     "name": "William Navarro",

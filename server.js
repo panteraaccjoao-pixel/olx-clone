@@ -117,9 +117,68 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/(<span class=["']?[^"'>]*typo-body-medium font-semibold[^"'>]*["']?>)(?:Aleixo|[^<]+)(<\/span><span class=["']?[^"'>]*typo-body-small font-semibold text-neutral-110[^"'>]*["']?>)(?:Manaus, AM, 69083270|[^<]+)(<\/span>)/gi, `$1${p.location.split(',')[0] || p.location}$2${p.location}$3`);
   }
 
-  // 10. Atualizar Vendedor
+  // 10. Atualizar Vendedor (Desktop e Mobile)
   if (s.name) {
     html = html.replace(/(class=["']?[^"'>]*advc-mini-profile__name[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/(?:span|div|a)>)/gi, `$1${s.name}$3`);
+    html = html.replace(/Miguel Fiorio/g, s.name);
+  }
+  if (s.avatar) {
+    html = html.replace(/(<img[^>]*class=["']?[^"']*advc-mini-profile__avatar[^"']*["'][^>]*src=)(?:"[^"]*"|[^ >]+)/gi, `$1"${s.avatar}"`);
+  }
+  if (s.lastAccess) {
+    html = html.replace(/Último acesso[^<]*/gi, s.lastAccess);
+  }
+
+  // 11. Atualizar Localização no Mobile
+  if (p.location) {
+    const city = p.location.split(',')[0].trim();
+    html = html.replace(/(<span class="typo-body-medium font-semibold">)(?:Nova Gerty|[^<]+)(<\/span><span class="typo-body-small font-semibold text-neutral-110">)(?:São Caetano do Sul[^<]*|[^<]+)(<\/span>)/gi, `$1${city}$2${p.location}$3`);
+  }
+
+  // 12. Atualizar Cards de Detalhes / Características (Desktop e Mobile)
+  const d = p.details || {
+    brand: p.brand || 'Brastemp',
+    model: p.model || 'Ative Inox Duplex Frost Free',
+    condition: p.condition || 'Usado - Excelente',
+    color: p.color || 'Inox',
+    storage: p.storage || '',
+    extra: p.extra || '',
+    acceptTrades: p.acceptTrades || 'Não'
+  };
+
+  // Marca
+  if (d.brand) {
+    html = html.replace(/(<span class=advc-detail-item__title>Marca<\/span>[\s\S]*?<span[^>]*>)([\s\S]*?)(<div|<\/span>)/i, (m, g1, g2, g3) => g1 + d.brand + g3);
+    html = html.replace(/(<span class=advc-detail-item__title[^>]*>Marca<\/span>\s*<span[^>]*>)([\s\S]*?)(<\/span>)/i, (m, g1, g2, g3) => g1 + d.brand + g3);
+  }
+  // Modelo
+  if (d.model) {
+    html = html.replace(/(<span class=advc-detail-item__title>Modelo<\/span>[\s\S]*?<span[^>]*>)([\s\S]*?)(<div|<\/span>)/i, (m, g1, g2, g3) => g1 + d.model + g3);
+    html = html.replace(/(<span class=advc-detail-item__title[^>]*>Modelo<\/span>\s*<span[^>]*>)([\s\S]*?)(<\/span>)/i, (m, g1, g2, g3) => g1 + d.model + g3);
+  }
+  // Condição
+  const cond = d.condition || p.condition || 'Usado - Excelente';
+  if (cond) {
+    html = html.replace(/(<span class=advc-detail-item__title>Condição<\/span>[\s\S]*?<span[^>]*>)([\s\S]*?)(<div|<\/span>)/i, (m, g1, g2, g3) => g1 + cond + g3);
+    html = html.replace(/(<span class=advc-detail-item__title[^>]*>Condição<\/span>\s*<span[^>]*>)([\s\S]*?)(<\/span>)/i, (m, g1, g2, g3) => g1 + cond + g3);
+  }
+  // Cor
+  if (d.color) {
+    html = html.replace(/(<span class=advc-detail-item__title>Cor<\/span>[\s\S]*?<span[^>]*>)([\s\S]*?)(<div|<\/span>)/i, (m, g1, g2, g3) => g1 + d.color + g3);
+    html = html.replace(/(<span class=advc-detail-item__title[^>]*>Cor<\/span>\s*<span[^>]*>)([\s\S]*?)(<\/span>)/i, (m, g1, g2, g3) => g1 + d.color + g3);
+  }
+  // Memória / Capacidade
+  if (d.storage) {
+    html = html.replace(/(<span class=advc-detail-item__title>(?:Memória interna|Capacidade)<\/span>[\s\S]*?<span[^>]*>)([\s\S]*?)(<div|<\/span>)/i, (m, g1, g2, g3) => g1 + d.storage + g3);
+  }
+  // Extra / Bateria
+  if (d.extra) {
+    html = html.replace(/(<span class=advc-detail-item__title>(?:Saúde da bateria|Detalhes extras?)<\/span>[\s\S]*?<span[^>]*>)([\s\S]*?)(<div|<\/span>)/i, (m, g1, g2, g3) => g1 + d.extra + g3);
+  }
+  // Aceita trocas
+  if (d.acceptTrades) {
+    html = html.replace(/(<span class=advc-detail-item__title>Aceita trocas<\/span>[\s\S]*?<span[^>]*>)([\s\S]*?)(<div|<\/span>)/i, (m, g1, g2, g3) => g1 + d.acceptTrades + g3);
+    html = html.replace(/(<span class=advc-detail-item__title[^>]*>Aceita trocas<\/span>\s*<span[^>]*>)([\s\S]*?)(<\/span>)/i, (m, g1, g2, g3) => g1 + d.acceptTrades + g3);
   }
 
   return html;
@@ -129,12 +188,19 @@ function syncAdFilesOnDisk(config) {
   try {
     const adFile = path.join(DIR, 'iphone-17-branco-olx.html');
     const indexFile = path.join(DIR, 'index.html');
+    const mobileFile = path.join(DIR, 'mobile.html');
     if (fs.existsSync(adFile)) {
       const raw = fs.readFileSync(adFile, 'utf8');
       const rendered = renderAdHtml(raw, config);
       fs.writeFileSync(adFile, rendered, 'utf8');
       fs.writeFileSync(indexFile, rendered, 'utf8');
       console.log('[Sync] iphone-17-branco-olx.html e index.html atualizados em disco!');
+    }
+    if (fs.existsSync(mobileFile)) {
+      const rawMobile = fs.readFileSync(mobileFile, 'utf8');
+      const renderedMobile = renderAdHtml(rawMobile, config);
+      fs.writeFileSync(mobileFile, renderedMobile, 'utf8');
+      console.log('[Sync] mobile.html atualizado em disco!');
     }
   } catch (e) {
     console.error('[Sync Error]', e.message);
