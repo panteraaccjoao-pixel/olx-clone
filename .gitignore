@@ -6,4 +6,6 @@ make_zip.ps1
 *.log
 .system_generated/
 *OLX (09_10_2026*.html
+mobile_raw_ps5.html
+*OLX (11_10_2026*.html
 
