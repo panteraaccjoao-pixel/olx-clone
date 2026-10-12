@@ -2374,11 +2374,15 @@
       const extBtn = document.getElementById('preview-open-ext-btn');
       const iframe = document.getElementById('preview-iframe');
 
+      const isMobile = (currentPreviewDevice === 'mobile');
       if (page === 'ad') {
         btnAd.classList.add('active');
         btnSeller.classList.remove('active');
-        iframe.src = '/?preview=1&draft=1&t=' + Date.now();
-        extBtn.href = '/';
+        const targetUrl = isMobile 
+          ? '/mobile.html?preview=1&draft=1&view=mobile&t=' + Date.now()
+          : '/?preview=1&draft=1&view=desktop&t=' + Date.now();
+        iframe.src = targetUrl;
+        extBtn.href = isMobile ? '/mobile.html' : '/';
       } else {
         btnSeller.classList.add('active');
         btnAd.classList.remove('active');
@@ -2401,6 +2405,13 @@
         iframe.classList.remove('mobile');
         btnDesk.classList.add('active');
         btnMob.classList.remove('active');
+      }
+
+      if (currentPreviewPage === 'ad') {
+        const isMobile = (device === 'mobile');
+        iframe.src = isMobile 
+          ? '/mobile.html?preview=1&draft=1&view=mobile&t=' + Date.now()
+          : '/?preview=1&draft=1&view=desktop&t=' + Date.now();
       }
     }
 
