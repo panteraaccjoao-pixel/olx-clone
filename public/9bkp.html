@@ -1642,15 +1642,21 @@
 
             <!-- Avatar & Identity -->
             <div style="display:flex; align-items:center; gap:24px; margin-bottom:24px; background:rgba(15,23,42,0.5); padding:20px; border-radius:14px; border:1px solid var(--card-border);">
-              <img id="seller-avatar-preview" src="/images/perfil/avatar-william.jpg" alt="Avatar" style="width:84px; height:84px; border-radius:50%; object-fit:cover; border:3px solid var(--primary);">
+              <img id="seller-avatar-preview" src="/images/perfil/avatar-polar.jpg" alt="Avatar" style="width:84px; height:84px; border-radius:50%; object-fit:cover; border:3px solid var(--primary);">
               <div style="flex:1;">
                 <label>Foto de Perfil do Vendedor</label>
-                <div style="display:flex; gap:10px; margin-top:6px; flex-wrap:wrap;">
+                <div style="display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; align-items:center;">
                   <input type="file" id="seller-avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatarFile(this)">
                   <button type="button" class="action-btn" onclick="document.getElementById('seller-avatar-file-input').click()">
                     <span>📁</span> Carregar Arquivo
                   </button>
-                  <input type="text" id="seller-avatar-url" placeholder="Ou digite o link da foto de perfil" style="flex:1; min-width:200px;" oninput="document.getElementById('seller-avatar-preview').src = this.value">
+                  <button type="button" class="action-btn" style="background:#10b981; color:#fff;" onclick="quickSaveOfficial()" title="Salvar e Publicar Foto">
+                    <span>💾</span> Salvar Imediato
+                  </button>
+                  <input type="text" id="seller-avatar-url" placeholder="Ou digite o link da foto de perfil" style="flex:1; min-width:200px;" oninput="document.getElementById('seller-avatar-preview').src = this.value" onchange="autoSaveAvatarFromUrl(this.value)">
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">
+                  💡 Ao escolher ou alterar a foto, ela é <b>salva e publicada automaticamente</b> no anúncio e no perfil!
                 </div>
               </div>
             </div>
@@ -2033,7 +2039,7 @@
       // Seller
       document.getElementById('seller-name').value = s.name || '';
       document.getElementById('seller-avatar-url').value = s.avatar || '';
-      document.getElementById('seller-avatar-preview').src = s.avatar || '/images/perfil/avatar-william.jpg';
+      document.getElementById('seller-avatar-preview').src = s.avatar || '/images/perfil/avatar-polar.jpg';
       document.getElementById('seller-last-access').value = s.lastAccess || '';
       document.getElementById('seller-member-since').value = s.memberSince || '';
       document.getElementById('seller-reputation').value = s.reputation || '';
@@ -2109,9 +2115,11 @@
       input.accept = 'image/*';
       input.onchange = function() {
         if (!input.files[0]) return;
-        uploadFileDirect(input.files[0], (url) => {
+        uploadFileDirect(input.files[0], async (url) => {
           localImages.push(url);
           renderPhotosList();
+          await quickSaveOfficial();
+          showToast('🎉 Nova foto adicionada e publicada!');
         });
       };
       input.click();
@@ -2132,28 +2140,69 @@
       renderPhotosList();
     }
 
-    function deletePhoto(index) {
+    async function deletePhoto(index) {
       if (confirm('Tem certeza que deseja remover esta foto?')) {
         localImages.splice(index, 1);
         renderPhotosList();
+        await quickSaveOfficial();
+        showToast('Foto removida e anúncio atualizado!');
       }
     }
 
     function uploadSinglePhoto(index, input) {
       if (!input.files[0]) return;
-      uploadFileDirect(input.files[0], (url) => {
+      uploadFileDirect(input.files[0], async (url) => {
         localImages[index] = url;
         renderPhotosList();
+        input.value = '';
+        await quickSaveOfficial();
+        showToast('🎉 Foto alterada e salva no anúncio!');
       });
     }
 
     async function uploadAvatarFile(input) {
-      if (!input.files[0]) return;
-      uploadFileDirect(input.files[0], (url) => {
-        document.getElementById('seller-avatar-preview').src = url;
-        document.getElementById('seller-avatar-url').value = url;
-        showToast('Foto carregada! Clique em "Salvar Imediato" para publicar no anúncio.');
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      showToast('Otimizando foto de perfil...');
+
+      // Avatar usa 400x400 para carregar leve e ultra rápido
+      compressImageFile(file, 400, 400, 0.85, async function(base64) {
+        if (!base64) {
+          alert('Não foi possível processar a imagem selecionada.');
+          return;
+        }
+
+        let savedUrl = base64;
+        try {
+          const res = await fetch('/api/admin/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName: file.name, base64 })
+          });
+          const d = await res.json().catch(() => ({}));
+          if (d && d.success && d.url) {
+            savedUrl = d.url;
+          }
+        } catch (err) {
+          console.warn('[Upload Avatar] Servidor usou fallback Base64:', err.message);
+        }
+
+        document.getElementById('seller-avatar-preview').src = savedUrl;
+        document.getElementById('seller-avatar-url').value = savedUrl;
+        input.value = '';
+
+        // Auto-salvar IMEDIATO no anúncio e no perfil!
+        showToast('Publicando foto no anúncio...');
+        await quickSaveOfficial();
+        showToast('🎉 Foto do vendedor salva e publicada com sucesso!');
       });
+    }
+
+    async function autoSaveAvatarFromUrl(url) {
+      if (!url) return;
+      document.getElementById('seller-avatar-preview').src = url;
+      await quickSaveOfficial();
+      showToast('🎉 Foto do vendedor atualizada e salva!');
     }
 
     function compressImageFile(file, maxWidth, maxHeight, quality, callback) {

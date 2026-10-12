@@ -254,19 +254,20 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/Miguel Fiorio/g, s.name);
   }
   if (s.avatar) {
-    html = html.replace(/<img\b([^>]*\bclass=["']?[^"'>]*advc-mini-profile__avatar[^"'>]*)([^>]*)>/gi, (match) => {
+    html = html.replace(/<img\b([^>]*\b(?:class=["']?[^"'>]*advc-mini-profile__avatar[^"'>]*|id=["']advc-seller-avatar-img["'])[^>]*)>/gi, (match) => {
       let tag = match;
       if (/src=(?:"[^"]*"|'[^']*'|[^\s>]+)/i.test(tag)) {
-        tag = tag.replace(/src=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, `src="${s.avatar}"`);
+        tag = tag.replace(/src=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, () => `src="${s.avatar}"`);
       } else {
-        tag = tag.replace(/<img/i, `<img src="${s.avatar}"`);
+        tag = tag.replace(/<img/i, () => `<img src="${s.avatar}"`);
       }
       if (s.name) {
-        tag = tag.replace(/alt=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, `alt="Foto de ${s.name}"`);
+        tag = tag.replace(/alt=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, () => `alt="Foto de ${s.name}"`);
       }
       return tag;
     });
-    html = html.replace(/(<img\b[^>]*\balt=["']Foto de [^"']*["'][^>]*\bsrc=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, `$1"${s.avatar}"`);
+    html = html.replace(/(<img\b[^>]*\balt=["']Foto de [^"']*["'][^>]*\bsrc=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, (m, g1) => `${g1}"${s.avatar}"`);
+    html = html.replace(/(<img\b[^>]*\bsrc=)(?:"[^"]*"|'[^']*'|[^\s>]+)([^>]*\balt=["']Foto de [^"']*["'][^>]*>)/gi, (m, g1, g2) => `${g1}"${s.avatar}"${g2}`);
   }
   if (s.lastAccess) {
     html = html.replace(/Último acesso[^<]*/gi, s.lastAccess);
@@ -332,6 +333,7 @@ function syncAdFilesOnDisk(config) {
     const adFile = path.join(DIR, 'iphone-17-branco-olx.html');
     const indexFile = path.join(DIR, 'index.html');
     const mobileFile = path.join(DIR, 'mobile.html');
+    const perfilFile = path.join(DIR, 'perfil.html');
     if (fs.existsSync(adFile)) {
       const raw = fs.readFileSync(adFile, 'utf8');
       const rendered = renderAdHtml(raw, config);
@@ -344,6 +346,18 @@ function syncAdFilesOnDisk(config) {
       const renderedMobile = renderAdHtml(rawMobile, config);
       fs.writeFileSync(mobileFile, renderedMobile, 'utf8');
       console.log('[Sync] mobile.html atualizado em disco!');
+    }
+    if (fs.existsSync(perfilFile) && config && config.seller) {
+      let rawPerfil = fs.readFileSync(perfilFile, 'utf8');
+      const s = config.seller;
+      if (s.avatar) {
+        rawPerfil = rawPerfil.replace(/(<img\b[^>]*alt=["']Imagem do perfil da loja["'][^>]*src=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, (m, g1) => `${g1}"${s.avatar}"`);
+      }
+      if (s.name) {
+        rawPerfil = rawPerfil.replace(/William Navarro/g, s.name);
+      }
+      fs.writeFileSync(perfilFile, rawPerfil, 'utf8');
+      console.log('[Sync] perfil.html atualizado em disco!');
     }
   } catch (e) {
     console.error('[Sync Error]', e.message);
@@ -910,7 +924,7 @@ async function handleRequest(req, res) {
 
 const server = http.createServer(handleRequest);
 
-if (require.main === module || !process.env.VERCEL) {
+if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => {
     console.log('Servidor rodando em http://localhost:' + PORT + '/');
     console.log('- API CEP:  http://localhost:' + PORT + '/api/cep?cep=07141427');

@@ -256,7 +256,7 @@
 
         // Seller Avatar (PC & Mobile)
         if (s && s.avatar) {
-          document.querySelectorAll('.advc-mini-profile__avatar, .advc-mini-profile img, .advc-mini-profile__profile img, img[alt*="Foto de"]').forEach(el => {
+          document.querySelectorAll('#advc-seller-avatar-img, .advc-mini-profile__avatar, .advc-mini-profile img, .advc-mini-profile__profile img, img[alt*="Foto de"]').forEach(el => {
             if (!el.classList.contains('advc-seller-history__star') && !el.closest('.advc-seller-history__stars')) {
               el.src = s.avatar;
               if (s.name) el.alt = 'Foto de ' + s.name;
@@ -279,7 +279,7 @@
         }
 
         if (s && s.avatar) {
-          const avatarImg = document.querySelector('[data-testid="avatar-seller"] img, .sc-cbe5f5f1-0 img');
+          const avatarImg = document.querySelector('[data-testid="avatar-seller"] img, .sc-cbe5f5f1-0 img, img[alt*="Imagem do perfil da loja"]');
           if (avatarImg) avatarImg.src = s.avatar;
         }
 
