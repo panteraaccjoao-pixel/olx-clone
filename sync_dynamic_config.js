@@ -27,7 +27,7 @@
     // ----------------------------------------------------
     // 1. PRODUCT PAGE (index.html / iphone-17-branco-olx.html / /)
     // ----------------------------------------------------
-    if (path === '/' || path.includes('iphone-17-branco-olx.html') || path === '/index.html' || path === '') {
+    if (path === '/' || path.includes('iphone-17-branco-olx.html') || path === '/index.html' || path.includes('mobile.html') || path === '') {
         // Title
         if (p.title) {
           document.title = p.title + ' | OLX';
