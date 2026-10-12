@@ -19,6 +19,51 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
+// Static assets explicitly mapped so @vercel/nft AST parser traces them for serverless bundles
+const STATIC_ASSETS = {
+  admin: path.join(__dirname, 'admin.html'),
+  checkout: path.join(__dirname, 'checkout.html'),
+  pix: path.join(__dirname, 'pix.html'),
+  perfil: path.join(__dirname, 'perfil.html'),
+  index: path.join(__dirname, 'index.html'),
+  mobile: path.join(__dirname, 'mobile.html'),
+  ad: path.join(__dirname, 'iphone-17-branco-olx.html'),
+  config: path.join(__dirname, 'config.json'),
+  draft: path.join(__dirname, 'draft_config.json')
+};
+
+function serveHtmlFile(res, fileName) {
+  const candidateDirs = [
+    DIR,
+    process.cwd(),
+    path.join(DIR, 'public'),
+    path.join(process.cwd(), 'public'),
+    path.join(DIR, 'api'),
+    path.join(process.cwd(), 'api'),
+    path.join(__dirname, '..'),
+    path.join(__dirname, '..', 'public'),
+    path.join(__dirname, '..', 'api')
+  ];
+  for (const base of candidateDirs) {
+    try {
+      const p = path.join(base, fileName);
+      if (fs.existsSync(p)) {
+        const content = fs.readFileSync(p, 'utf8');
+        const buf = Buffer.from(content, 'utf8');
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Length': buf.length,
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        });
+        res.end(buf);
+        return true;
+      }
+    } catch (e) {}
+  }
+  return false;
+}
+
 function renderAdHtml(rawHtml, config) {
   let html = rawHtml;
   if (!config || !config.product) return html;
@@ -221,6 +266,11 @@ async function handleRequest(req, res) {
         }
       } catch (e) {}
     }
+  }
+
+  // Normalize trailing slash (e.g. /9bkp/ -> /9bkp)
+  if (reqPath.length > 1 && reqPath.endsWith('/')) {
+    reqPath = reqPath.slice(0, -1);
   }
 
   // Support /api/cep proxy to ensure zero CORS and zero CSP issues
@@ -674,19 +724,27 @@ async function handleRequest(req, res) {
     }
   }
 
-  // Default routes
-  if (reqPath === '/checkout') {
-    reqPath = '/checkout.html';
-  } else if (reqPath === '/pix' || reqPath === '/pix.html' || reqPath.startsWith('/pedidos')) {
-    reqPath = '/pix.html';
-  } else if (reqPath === '/perfil' || reqPath.startsWith('/perfil/') || reqPath.startsWith('/perfil')) {
-    reqPath = '/perfil.html';
-  } else if (reqPath === '/9bkp' || reqPath === '/9bkp.html') {
-    reqPath = '/admin.html';
-  } else if (reqPath === '/admin' || reqPath === '/admin.html') {
+  // Default routes and Admin panel /9bkp
+  if (reqPath === '/9bkp' || reqPath === '/9bkp.html') {
+    if (serveHtmlFile(res, 'admin.html')) return;
+    if (serveHtmlFile(res, '9bkp.html')) return;
+  }
+
+  if (reqPath === '/admin' || reqPath === '/admin.html') {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Arquivo nao encontrado: ' + reqPath);
     return;
+  }
+
+  if (reqPath === '/checkout' || reqPath === '/checkout.html') {
+    if (serveHtmlFile(res, 'checkout.html')) return;
+    reqPath = '/checkout.html';
+  } else if (reqPath === '/pix' || reqPath === '/pix.html' || reqPath.startsWith('/pedidos')) {
+    if (serveHtmlFile(res, 'pix.html')) return;
+    reqPath = '/pix.html';
+  } else if (reqPath === '/perfil' || reqPath.startsWith('/perfil/') || reqPath.startsWith('/perfil')) {
+    if (serveHtmlFile(res, 'perfil.html')) return;
+    reqPath = '/perfil.html';
   }
 
   const filePath = path.join(DIR, reqPath);

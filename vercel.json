@@ -2,10 +2,15 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "**"
+      "includeFiles": "{admin.html,checkout.html,pix.html,perfil.html,index.html,mobile.html,iphone-17-branco-olx.html,config.json,draft_config.json,public/**,api/**}"
     }
   },
   "rewrites": [
+    { "source": "/9bkp", "destination": "/api/index.js?__orig_path=/9bkp" },
+    { "source": "/9bkp.html", "destination": "/api/index.js?__orig_path=/9bkp" },
+    { "source": "/pix", "destination": "/api/index.js?__orig_path=/pix" },
+    { "source": "/perfil", "destination": "/api/index.js?__orig_path=/perfil" },
+    { "source": "/checkout", "destination": "/api/index.js?__orig_path=/checkout" },
     { "source": "/(.*)", "destination": "/api/index.js?__orig_path=/$1" }
   ]
 }
