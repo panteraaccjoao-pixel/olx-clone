@@ -561,13 +561,21 @@ async function handleRequest(req, res) {
   }
 
   // Ad Sales Page: Zero-Flicker Pre-Rendered (SSR-lite)
-  if (reqPath === '/' || reqPath === '' || reqPath === '/iphone-17-branco-olx.html' || reqPath === '/index.html') {
+  if (reqPath === '/' || reqPath === '' || reqPath === '/iphone-17-branco-olx.html' || reqPath === '/index.html' || reqPath === '/mobile.html') {
     try {
       const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('draft') === 'true' || urlObj.searchParams.get('preview') === '1' || urlObj.searchParams.get('preview') === 'true';
       const targetConfig = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
       const cfg = JSON.parse(fs.readFileSync(path.join(DIR, targetConfig), 'utf8'));
-      const adPath = path.join(DIR, 'iphone-17-branco-olx.html');
+
+      const userAgent = req.headers['user-agent'] || '';
+      const isMobileUA = /mobile|iphone|android|ipad|phone/i.test(userAgent);
+      const forceMobile = urlObj.searchParams.get('view') === 'mobile' || reqPath === '/mobile.html';
+      const forceDesktop = urlObj.searchParams.get('view') === 'desktop';
+      const isMobile = (isMobileUA || forceMobile) && !forceDesktop;
+
+      const targetFile = isMobile ? 'mobile.html' : 'iphone-17-branco-olx.html';
+      const adPath = path.join(DIR, targetFile);
       const rawHtml = fs.readFileSync(adPath, 'utf8');
       const rendered = renderAdHtml(rawHtml, cfg);
       const buf = Buffer.from(rendered, 'utf8');
