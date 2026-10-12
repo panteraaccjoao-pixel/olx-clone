@@ -1,9 +1,73 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const PORT = process.env.PORT || 3000;
 const DIR = __dirname;
+const TMP_DIR = os.tmpdir();
+const TMP_CONFIG = path.join(TMP_DIR, 'olx_config.json');
+const TMP_DRAFT = path.join(TMP_DIR, 'olx_draft_config.json');
+
+let inMemoryConfig = null;
+let inMemoryDraft = null;
+
+function loadCurrentConfig(isDraft = false) {
+  if (isDraft && inMemoryDraft) return inMemoryDraft;
+  if (!isDraft && inMemoryConfig) return inMemoryConfig;
+
+  const tmpFile = isDraft ? TMP_DRAFT : TMP_CONFIG;
+  if (fs.existsSync(tmpFile)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(tmpFile, 'utf8'));
+      if (isDraft) inMemoryDraft = data;
+      else inMemoryConfig = data;
+      return data;
+    } catch(e) {}
+  }
+
+  const diskFile = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(DIR, diskFile), 'utf8'));
+    if (isDraft) inMemoryDraft = data;
+    else inMemoryConfig = data;
+    return data;
+  } catch(e) {
+    return isDraft ? (inMemoryConfig || {}) : {};
+  }
+}
+
+function saveCurrentConfig(data, isDraft = false) {
+  if (isDraft) {
+    inMemoryDraft = data;
+  } else {
+    inMemoryConfig = data;
+    inMemoryDraft = data;
+  }
+
+  // 1. Gravar em /tmp (sempre gravável na Vercel e containers AWS Lambda)
+  try {
+    const tmpFile = isDraft ? TMP_DRAFT : TMP_CONFIG;
+    fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2), 'utf8');
+    if (!isDraft) {
+      try { fs.writeFileSync(TMP_DRAFT, JSON.stringify(data, null, 2), 'utf8'); } catch(e) {}
+    }
+  } catch(e) {
+    console.warn('[Config] Erro ao gravar /tmp:', e.message);
+  }
+
+  // 2. Gravar no diretório do projeto se gravável (localhost / VPS)
+  try {
+    const targetFile = isDraft ? 'draft_config.json' : 'config.json';
+    fs.writeFileSync(path.join(DIR, targetFile), JSON.stringify(data, null, 2), 'utf8');
+    if (!isDraft) {
+      try { fs.writeFileSync(path.join(DIR, 'draft_config.json'), JSON.stringify(data, null, 2), 'utf8'); } catch(e) {}
+      syncAdFilesOnDisk(data);
+    }
+  } catch(diskErr) {
+    console.log('[Config] Read-only filesystem no DIR, mantido em memória e /tmp');
+  }
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -393,9 +457,8 @@ async function handleRequest(req, res) {
       try {
         const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
         const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('draft') === 'true';
-        const targetFile = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
-        const config = fs.readFileSync(path.join(DIR, targetFile), 'utf8');
-        res.end(config);
+        const cfg = loadCurrentConfig(isDraft);
+        res.end(JSON.stringify(cfg, null, 2));
       } catch (e) {
         res.end(JSON.stringify({ error: e.message }));
       }
@@ -409,9 +472,8 @@ async function handleRequest(req, res) {
 
       parseBody(req, (err, parsed) => {
         try {
-          fs.writeFileSync(path.join(DIR, 'config.json'), JSON.stringify(parsed, null, 2));
-          fs.writeFileSync(path.join(DIR, 'draft_config.json'), JSON.stringify(parsed, null, 2));
-          syncAdFilesOnDisk(parsed);
+          if (!parsed || typeof parsed !== 'object') throw new Error('Dados inválidos');
+          saveCurrentConfig(parsed, false);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, message: 'Configuracoes salvas e publicadas com sucesso' }));
         } catch (e) {
@@ -430,7 +492,8 @@ async function handleRequest(req, res) {
 
     parseBody(req, (err, parsed) => {
       try {
-        fs.writeFileSync(path.join(DIR, 'draft_config.json'), JSON.stringify(parsed, null, 2));
+        if (!parsed || typeof parsed !== 'object') throw new Error('Dados inválidos');
+        saveCurrentConfig(parsed, true);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: 'Rascunho de preview salvo com sucesso' }));
       } catch (e) {
@@ -458,7 +521,7 @@ async function handleRequest(req, res) {
         let validUser = 'admin';
         let validPass = '123';
         try {
-          const cfg = JSON.parse(fs.readFileSync(path.join(DIR, 'config.json'), 'utf8'));
+          const cfg = loadCurrentConfig(false);
           if (cfg.auth && cfg.auth.username) validUser = cfg.auth.username;
           if (cfg.auth && cfg.auth.password) validPass = cfg.auth.password;
         } catch(e) {}
@@ -488,20 +551,29 @@ async function handleRequest(req, res) {
       try {
         const { fileName, base64 } = parsed || {};
         if (!base64) throw new Error('Base64 ausente');
-        
-        const uploadsDir = path.join(DIR, 'images', 'uploads');
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
+
+        let savedUrl = base64;
+        try {
+          const uploadsDir = path.join(DIR, 'images', 'uploads');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+
+          const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+          const buffer = matches ? Buffer.from(matches[2], 'base64') : Buffer.from(base64, 'base64');
+          const safeName = Date.now() + '-' + (fileName || 'image.jpg').replace(/[^a-zA-Z0-9.-]/g, '_');
+          const filePath = path.join(uploadsDir, safeName);
+
+          fs.writeFileSync(filePath, buffer);
+          savedUrl = '/images/uploads/' + safeName;
+        } catch (diskErr) {
+          // Read-only filesystem no Vercel (/var/task)
+          console.log('[Upload] Read-only filesystem detectado, mantendo imagem como Data URI Base64:', diskErr.message);
+          savedUrl = base64;
         }
 
-        const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        const buffer = matches ? Buffer.from(matches[2], 'base64') : Buffer.from(base64, 'base64');
-        const safeName = Date.now() + '-' + (fileName || 'image.jpg').replace(/[^a-zA-Z0-9.-]/g, '_');
-        const filePath = path.join(uploadsDir, safeName);
-
-        fs.writeFileSync(filePath, buffer);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, url: '/images/uploads/' + safeName }));
+        res.end(JSON.stringify({ success: true, url: savedUrl }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: e.message }));
@@ -618,7 +690,7 @@ async function handleRequest(req, res) {
         let adminProductPrice = null;
         let productTitle = 'iPhone 17 Branco';
         try {
-          const cfg = JSON.parse(fs.readFileSync(path.join(DIR, 'config.json'), 'utf8'));
+          const cfg = loadCurrentConfig(false);
           if (cfg.product) {
             if (cfg.product.title) productTitle = cfg.product.title;
             if (cfg.product.priceCents && !isNaN(parseFloat(cfg.product.priceCents))) {
@@ -737,8 +809,7 @@ async function handleRequest(req, res) {
     try {
       const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('draft') === 'true' || urlObj.searchParams.get('preview') === '1' || urlObj.searchParams.get('preview') === 'true';
-      const targetConfig = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
-      const cfg = JSON.parse(fs.readFileSync(path.join(DIR, targetConfig), 'utf8'));
+      const cfg = loadCurrentConfig(isDraft);
 
       const userAgent = req.headers['user-agent'] || '';
       const isMobileUA = /mobile|iphone|android|ipad|phone/i.test(userAgent);
