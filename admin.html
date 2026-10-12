@@ -1306,7 +1306,10 @@
           <button type="button" class="action-btn" onclick="loadConfig()" title="Recarregar Dados">
             <span>🔄</span> Recarregar
           </button>
-          <a href="/" target="_blank" class="action-btn primary" title="Abrir Anúncio em Nova Aba">
+          <button type="button" class="action-btn primary" id="btn-quick-save-top" onclick="quickSaveOfficial()" style="background:var(--accent-green); border-color:var(--accent-green); font-weight:700;" title="Salvar e Publicar Imediatamente">
+            <span>💾</span> Salvar Imediato
+          </button>
+          <a href="/" target="_blank" class="action-btn" title="Abrir Anúncio em Nova Aba">
             <span>👁️</span> Testar Site
           </a>
           <button type="button" class="action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#F87171;" onclick="logoutAdmin()" title="Encerrar Sessão">
@@ -1803,8 +1806,11 @@
         </div>
         <div style="display:flex; gap:12px;">
           <button type="button" class="action-btn" onclick="loadConfig()">Descartar Mudanças</button>
-          <button type="button" class="save-btn-main" id="save-btn" onclick="openDraftPreview()">
-            <span>👁️</span> Pré-visualizar & Confirmar Mudanças
+          <button type="button" class="save-btn-main" id="btn-quick-save" onclick="quickSaveOfficial()" style="background:var(--accent-green); border-color:var(--accent-green); box-shadow:0 4px 14px rgba(16,185,129,0.35);">
+            <span>💾</span> Salvar Imediato
+          </button>
+          <button type="button" class="save-btn-main" id="save-btn" onclick="openDraftPreview()" style="background:rgba(255,255,255,0.08); border-color:var(--card-border);">
+            <span>👁️</span> Pré-visualizar & Confirmar
           </button>
         </div>
       </div>
@@ -2146,6 +2152,7 @@
       uploadFileDirect(input.files[0], (url) => {
         document.getElementById('seller-avatar-preview').src = url;
         document.getElementById('seller-avatar-url').value = url;
+        showToast('Foto carregada! Clique em "Salvar Imediato" para publicar no anúncio.');
       });
     }
 
@@ -2418,6 +2425,10 @@
       const draftPayload = buildPayloadFromForm();
 
       try {
+        try {
+          localStorage.setItem('olx_draft_config', JSON.stringify(draftPayload));
+        } catch(e) {}
+
         // Save to draft endpoint so preview iframe can inspect it without touching the official site
         await fetch('/api/admin/draft', {
           method: 'POST',
@@ -2447,7 +2458,42 @@
         showToast('Erro ao gerar preview: ' + err.message, true);
       } finally {
         saveBtn.disabled = false;
-        saveBtn.innerHTML = '<span>👁️</span> Pré-visualizar & Confirmar Mudanças';
+        saveBtn.innerHTML = '<span>👁️</span> Pré-visualizar & Confirmar';
+      }
+    }
+
+    async function quickSaveOfficial() {
+      const btn = document.getElementById('btn-quick-save');
+      const btnTop = document.getElementById('btn-quick-save-top');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> Salvando...'; }
+      if (btnTop) { btnTop.disabled = true; btnTop.innerHTML = '<span>⏳</span> Salvando...'; }
+
+      const officialPayload = buildPayloadFromForm();
+
+      try {
+        try {
+          localStorage.setItem('olx_live_config', JSON.stringify(officialPayload));
+          localStorage.removeItem('olx_draft_config');
+        } catch(e) {}
+
+        const res = await fetch('/api/admin/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(officialPayload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentConfig = officialPayload;
+          showToast('🎉 Anúncio e Vendedor salvos com sucesso!');
+        } else {
+          showToast('Erro ao salvar: ' + (data.error || 'Erro desconhecido'), true);
+        }
+      } catch (err) {
+        showToast('Erro de comunicação: ' + err.message, true);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>💾</span> Salvar Imediato'; }
+        if (btnTop) { btnTop.disabled = false; btnTop.innerHTML = '<span>💾</span> Salvar Imediato'; }
       }
     }
 
@@ -2459,6 +2505,11 @@
       const officialPayload = buildPayloadFromForm();
 
       try {
+        try {
+          localStorage.setItem('olx_live_config', JSON.stringify(officialPayload));
+          localStorage.removeItem('olx_draft_config');
+        } catch(e) {}
+
         const res = await fetch('/api/admin/data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2486,7 +2537,7 @@
           // Notify iframe to sync
           const iframe = document.getElementById('preview-iframe');
           if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({ type: 'OLX_CONFIG_UPDATE' }, '*');
+            iframe.contentWindow.postMessage({ type: 'OLX_CONFIG_UPDATE', config: officialPayload }, '*');
           }
         } else {
           showToast('Erro ao publicar: ' + data.error, true);
@@ -2512,6 +2563,17 @@
       const btnSeller = document.getElementById('tab-btn-seller');
       const extBtn = document.getElementById('preview-open-ext-btn');
       const iframe = document.getElementById('preview-iframe');
+
+      if (iframe) {
+        iframe.onload = function() {
+          try {
+            iframe.contentWindow.postMessage({
+              type: 'OLX_CONFIG_UPDATE',
+              config: buildPayloadFromForm()
+            }, '*');
+          } catch(e) {}
+        };
+      }
 
       const isMobile = (currentPreviewDevice === 'mobile');
       if (page === 'ad') {

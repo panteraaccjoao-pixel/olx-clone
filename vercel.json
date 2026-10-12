@@ -3,9 +3,17 @@
   "cleanUrls": true,
   "functions": {
     "api/index.js": {
-      "includeFiles": "{admin.html,checkout.html,pix.html,perfil.html,index.html,mobile.html,iphone-17-branco-olx.html,config.json,draft_config.json,public/**}"
+      "includeFiles": "{admin.html,checkout.html,pix.html,perfil.html,index.html,mobile.html,iphone-17-branco-olx.html,config.json,draft_config.json,sync_dynamic_config.js,public/**}"
     }
   },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/:match*", "destination": "/api/index.js?__orig_path=/api/:match*" },
     { "source": "/9bkp", "destination": "/9bkp/index.html" },

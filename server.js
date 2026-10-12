@@ -254,7 +254,19 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/Miguel Fiorio/g, s.name);
   }
   if (s.avatar) {
-    html = html.replace(/(<img[^>]*class=["']?[^"']*advc-mini-profile__avatar[^"']*["'][^>]*src=)(?:"[^"]*"|[^ >]+)/gi, `$1"${s.avatar}"`);
+    html = html.replace(/<img\b([^>]*\bclass=["']?[^"'>]*advc-mini-profile__avatar[^"'>]*)([^>]*)>/gi, (match) => {
+      let tag = match;
+      if (/src=(?:"[^"]*"|'[^']*'|[^\s>]+)/i.test(tag)) {
+        tag = tag.replace(/src=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, `src="${s.avatar}"`);
+      } else {
+        tag = tag.replace(/<img/i, `<img src="${s.avatar}"`);
+      }
+      if (s.name) {
+        tag = tag.replace(/alt=(?:"[^"]*"|'[^']*'|[^\s>]+)/i, `alt="Foto de ${s.name}"`);
+      }
+      return tag;
+    });
+    html = html.replace(/(<img\b[^>]*\balt=["']Foto de [^"']*["'][^>]*\bsrc=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, `$1"${s.avatar}"`);
   }
   if (s.lastAccess) {
     html = html.replace(/Último acesso[^<]*/gi, s.lastAccess);

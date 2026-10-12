@@ -256,7 +256,7 @@
 
         // Seller Avatar (PC & Mobile)
         if (s && s.avatar) {
-          document.querySelectorAll('.advc-mini-profile__profile img, .advc-mini-profile__avatar, img[alt*="Foto de"]').forEach(el => {
+          document.querySelectorAll('.advc-mini-profile__avatar, .advc-mini-profile img, .advc-mini-profile__profile img, img[alt*="Foto de"]').forEach(el => {
             if (!el.classList.contains('advc-seller-history__star') && !el.closest('.advc-seller-history__stars')) {
               el.src = s.avatar;
               if (s.name) el.alt = 'Foto de ' + s.name;
@@ -468,9 +468,21 @@
   async function applyAdminConfig() {
     try {
       const isDraft = window.location.search.includes('preview') || window.location.search.includes('draft');
-      if (!isDraft && window.__INITIAL_OLX_CONFIG__) {
-        applyData(window.__INITIAL_OLX_CONFIG__);
+      if (isDraft) {
+        try {
+          const draftLocal = localStorage.getItem('olx_draft_config');
+          if (draftLocal) applyData(JSON.parse(draftLocal));
+        } catch(e) {}
+      } else {
+        if (window.__INITIAL_OLX_CONFIG__) {
+          applyData(window.__INITIAL_OLX_CONFIG__);
+        }
+        try {
+          const liveLocal = localStorage.getItem('olx_live_config');
+          if (liveLocal) applyData(JSON.parse(liveLocal));
+        } catch(e) {}
       }
+
       const res = await fetch('/api/admin/data?' + (isDraft ? 'draft=1&' : '') + 't=' + Date.now());
       if (!res.ok) return;
       const data = await res.json();
@@ -480,7 +492,12 @@
     }
   }
 
-  if (window.__INITIAL_OLX_CONFIG__ && !window.location.search.includes('preview') && !window.location.search.includes('draft')) {
+  if (window.location.search.includes('preview') || window.location.search.includes('draft')) {
+    try {
+      const draftLocal = localStorage.getItem('olx_draft_config');
+      if (draftLocal) applyData(JSON.parse(draftLocal));
+    } catch(e) {}
+  } else if (window.__INITIAL_OLX_CONFIG__) {
     applyData(window.__INITIAL_OLX_CONFIG__);
   }
 
@@ -490,11 +507,16 @@
     applyAdminConfig();
   }
 
-  setTimeout(applyAdminConfig, 150);
+  setTimeout(applyAdminConfig, 100);
+  setTimeout(applyAdminConfig, 400);
 
   window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'OLX_CONFIG_UPDATE') {
-      applyAdminConfig();
+      if (event.data.config) {
+        applyData(event.data.config);
+      } else {
+        applyAdminConfig();
+      }
     }
   });
 })();
