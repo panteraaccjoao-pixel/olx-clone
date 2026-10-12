@@ -141,6 +141,19 @@ function syncAdFilesOnDisk(config) {
 
 async function handleRequest(req, res) {
   let reqPath = decodeURI(req.url.split('?')[0]);
+  if (reqPath.startsWith('/api/index.js') || reqPath === '/api/index.js') {
+    const origPath = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'] || req.headers['x-invoke-path'];
+    if (origPath && !origPath.startsWith('/api/index.js')) {
+      reqPath = decodeURI(origPath.split('?')[0]);
+    } else {
+      try {
+        const u = new URL(req.url, 'http://localhost');
+        if (u.searchParams.has('__orig_path')) {
+          reqPath = decodeURI(u.searchParams.get('__orig_path').split('?')[0]);
+        }
+      } catch (e) {}
+    }
+  }
 
   // Support /api/cep proxy to ensure zero CORS and zero CSP issues
   if (reqPath === '/api/cep' || reqPath.startsWith('/api/cep/')) {
