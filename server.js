@@ -48,10 +48,13 @@ function renderAdHtml(rawHtml, config) {
   }
   if (p.description) {
     const plainDesc = p.description.replace(/[\r\n]+/g, ' ').replace(/"/g, '&quot;');
-    html = html.replace(/<meta\s+name=["']?description["']?\s+content=[^>]+>/gi, `<meta name="description" content="${plainDesc}">`);
-    html = html.replace(/<meta\s+property=["']?og:description["']?\s+content=[^>]+>/gi, `<meta property="og:description" content="${plainDesc}">`);
-    html = html.replace(/<meta\s+name=["']?twitter:description["']?\s+content=[^>]+>/gi, `<meta name="twitter:description" content="${plainDesc}">`);
+    html = html.replace(/<meta\s+name=["']?description["']?\s+content=(?:"[^"]*"|'[^']*'|[^>]+)>/gi, `<meta name="description" content="${plainDesc}">`);
+    html = html.replace(/<meta\s+property=["']?og:description["']?\s+content=(?:"[^"]*"|'[^']*'|[^>]+)>/gi, `<meta property="og:description" content="${plainDesc}">`);
+    html = html.replace(/<meta\s+name=["']?twitter:description["']?\s+content=(?:"[^"]*"|'[^']*'|[^>]+)>/gi, `<meta name="twitter:description" content="${plainDesc}">`);
   }
+  // Remove any leftover corrupted description fragments if any
+  html = html.replace(/(?:<br>)?PS5 com menos de 1 ano[\s\S]*?98139-5554\."?>/gi, '');
+
   // Strip all preview images and cards so link preview shows only the title
   html = html.replace(/<meta\s+property=["']?og:image(?::\w+)?["']?\s+content=[^>]+>/gi, '');
   html = html.replace(/<meta\s+content=[^>]+\s+property=["']?og:image(?::\w+)?["']?>/gi, '');
@@ -89,7 +92,8 @@ function renderAdHtml(rawHtml, config) {
   if (p.description) {
     const formattedDesc = p.description.replace(/\n/g, '<br>');
     html = html.replace(/(<span class=["']?[^"'>]*advc-ad-description__text[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedDesc}$3`);
-    html = html.replace(/(<span class=["']?[^"'>]*typo-body-medium text-neutral-130[^"'>]*["']?[^>]*>)(?:iPhone 17[\s\S]*?Sem nota|Geladeira Brastemp[\s\S]*?informações!)(<\/span>)/gi, `$1${formattedDesc}$2`);
+    html = html.replace(/(<span class=["']?[^"'>]*typo-body-medium[^"'>]*style=["']?word-break:break-word[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedDesc}$3`);
+    html = html.replace(/(<span class=["']?[^"'>]*typo-body-medium text-neutral-130[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedDesc}$3`);
   }
 
   // 8. Galeria de Fotos - Substituir as 5 imagens da galeria hero
@@ -103,9 +107,12 @@ function renderAdHtml(rawHtml, config) {
     });
   }
 
-  // 9. Dados estruturados JSON-LD
+  // 9. Dados estruturados JSON-LD e Localização
   if (p.title) {
-    html = html.replace(/("name":")iPhone 17 branco [^"]*(")/gi, `$1${p.title}$2`);
+    html = html.replace(/("name":\s*")(?:PS5 [^"]*|iPhone 17 [^"]*|Geladeira [^"]*|[^"]*)(")/gi, `$1${p.title}$2`);
+  }
+  if (p.location) {
+    html = html.replace(/(<span class=["']?[^"'>]*typo-body-medium font-semibold[^"'>]*["']?>)(?:Aleixo|[^<]+)(<\/span><span class=["']?[^"'>]*typo-body-small font-semibold text-neutral-110[^"'>]*["']?>)(?:Manaus, AM, 69083270|[^<]+)(<\/span>)/gi, `$1${p.location.split(',')[0] || p.location}$2${p.location}$3`);
   }
 
   // 10. Atualizar Vendedor
