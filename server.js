@@ -70,7 +70,7 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/(<span[^>]*style=["']?[^"'>]*line-through[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedOld}$3`);
   }
   if (p.installments) {
-    html = html.replace(/(<p class=["']?font-semibold typo-body-small["']?>)[\s\S]*?(<\/p>)/gi, `$1${p.installments}$2`);
+    html = html.replace(/(<(?:p|div)[^>]*class=["']?[^"'>]*font-semibold typo-body-small[^"'>]*["']?>)[\s\S]*?(<\/(?:p|div)>)/gi, `$1${p.installments}$2`);
     html = html.replace(/(<div class=["']?[^"'>]*olx-core-badge--rectangle[^"'>]*["']?[^>]*>[\s\S]*?<span[^>]*>)(?:10x de R\$ 435,00 sem juros|12x[\s\S]*?)(<\/span>)/gi, `$1${p.installments}$2`);
   }
 
