@@ -286,18 +286,22 @@ async function handleRequest(req, res) {
     return;
   }
 
-  let reqPath = decodeURI(req.url.split('?')[0]);
-  try {
-    const u = new URL(req.url, 'http://localhost');
-    if (u.searchParams.has('__orig_path')) {
-      reqPath = decodeURI(u.searchParams.get('__orig_path').split('?')[0]);
-    } else if (reqPath.startsWith('/api/index.js') || reqPath === '/api/index.js') {
-      const orig = req.headers['x-forwarded-uri'] || req.headers['x-matched-path'] || req.headers['x-invoke-path'];
-      if (orig && !orig.startsWith('/api/index.js')) {
-        reqPath = decodeURI(orig.split('?')[0]);
-      }
+  let reqPath = (req.url || '/').split('?')[0];
+  if (req.url && req.url.includes('__orig_path=')) {
+    const m = req.url.match(/[?&]__orig_path=([^&]+)/);
+    if (m) {
+      reqPath = decodeURIComponent(m[1]).split('?')[0];
     }
-  } catch (e) {}
+  } else if (reqPath === '/api/index.js' || reqPath.startsWith('/api/index.js')) {
+    const orig = req.headers['x-forwarded-uri'] || req.headers['x-matched-path'] || req.headers['x-invoke-path'];
+    if (orig && !orig.startsWith('/api/index.js')) {
+      reqPath = orig.split('?')[0];
+    }
+  }
+
+  try {
+    reqPath = decodeURI(reqPath);
+  } catch(e) {}
 
   // Normalize trailing slash (e.g. /9bkp/ -> /9bkp)
   if (reqPath.length > 1 && reqPath.endsWith('/')) {

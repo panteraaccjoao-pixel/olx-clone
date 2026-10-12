@@ -2,17 +2,19 @@ const handleRequest = require('../server.js');
 
 module.exports = (req, res) => {
   try {
-    const urlObj = new URL(req.url, 'http://localhost');
-    if (urlObj.searchParams.has('__orig_path')) {
-      const orig = urlObj.searchParams.get('__orig_path');
-      urlObj.searchParams.delete('__orig_path');
-      const query = urlObj.search ? urlObj.search : '';
-      req.url = orig + query;
+    if (req.url && req.url.includes('__orig_path=')) {
+      const m = req.url.match(/[?&]__orig_path=([^&]+)/);
+      if (m) {
+        const orig = decodeURIComponent(m[1]);
+        const cleanQuery = req.url.replace(/[?&]__orig_path=[^&]*/, '').replace(/\?$/, '');
+        const qIdx = cleanQuery.indexOf('?');
+        req.url = orig + (qIdx !== -1 ? cleanQuery.slice(qIdx) : '');
+      }
     } else {
       const fwd = req.headers['x-forwarded-uri'] || req.headers['x-matched-path'] || req.headers['x-invoke-path'];
       if (fwd && !fwd.startsWith('/api/index.js')) {
-        const query = urlObj.search ? urlObj.search : '';
-        req.url = fwd + (query && !fwd.includes('?') ? query : '');
+        const qIdx = req.url.indexOf('?');
+        req.url = fwd + (qIdx !== -1 ? req.url.slice(qIdx) : '');
       }
     }
   } catch (e) {}
