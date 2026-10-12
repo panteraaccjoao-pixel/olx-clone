@@ -63,19 +63,20 @@ function renderAdHtml(rawHtml, config) {
   html = html.replace(/\/63\/630653332183373\.jpg/gi, '');
 
   // 4. Preço Principal
-  html = html.replace(/(class="[^"]*typo-title-large[^"]*"[^>]*>)([\s\S]*?)(<\/(?:span|div|h2)>)/gi, `$1${formattedPrice}$3`);
-  html = html.replace(/(class="[^"]*olx-text--price[^"]*"[^>]*>)([\s\S]*?)(<\/(?:span|div|h2)>)/gi, `$1${formattedPrice}$3`);
+  html = html.replace(/(class=["']?[^"'>]*typo-title-large[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/(?:span|div|h2)>)/gi, `$1${formattedPrice}$3`);
+  html = html.replace(/(class=["']?[^"'>]*olx-text--price[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/(?:span|div|h2)>)/gi, `$1${formattedPrice}$3`);
   if (p.oldPrice) {
     const formattedOld = String(p.oldPrice).startsWith('R$') ? String(p.oldPrice) : 'R$ ' + p.oldPrice;
-    html = html.replace(/(<span[^>]*style="[^"]*line-through[^"]*"[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedOld}$3`);
+    html = html.replace(/(<span[^>]*style=["']?[^"'>]*line-through[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedOld}$3`);
   }
   if (p.installments) {
-    html = html.replace(/(<div class="[^"]*olx-core-badge--rectangle[^"]*"[^>]*>[\s\S]*?<span[^>]*>)(?:10x de R\$ 435,00 sem juros|12x[\s\S]*?)(<\/span>)/gi, `$1${p.installments}$2`);
+    html = html.replace(/(<p class=["']?font-semibold typo-body-small["']?>)[\s\S]*?(<\/p>)/gi, `$1${p.installments}$2`);
+    html = html.replace(/(<div class=["']?[^"'>]*olx-core-badge--rectangle[^"'>]*["']?[^>]*>[\s\S]*?<span[^>]*>)(?:10x de R\$ 435,00 sem juros|12x[\s\S]*?)(<\/span>)/gi, `$1${p.installments}$2`);
   }
 
   // 5. Título do Anúncio (H1 e Seção)
   if (p.title) {
-    html = html.replace(/(class="[^"]*advc-adview-section__title[^"]*"[^>]*>)([\s\S]*?)(<\/(?:h1|span|div)>)/gi, `$1${p.title}$3`);
+    html = html.replace(/(class=["']?[^"'>]*advc-adview-section__title[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/(?:h1|span|div)>)/gi, `$1${p.title}$3`);
   }
 
   // 6. Categoria no Breadcrumb e na Tabela de Detalhes
@@ -87,8 +88,8 @@ function renderAdHtml(rawHtml, config) {
   // 7. Descrição do Produto
   if (p.description) {
     const formattedDesc = p.description.replace(/\n/g, '<br>');
-    html = html.replace(/(<span class="[^"]*advc-ad-description__text[^"]*"[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedDesc}$3`);
-    html = html.replace(/(<span class="[^"]*typo-body-medium text-neutral-130[^"]*"[^>]*>)(?:iPhone 17[\s\S]*?Sem nota|Geladeira Brastemp[\s\S]*?informações!)(<\/span>)/gi, `$1${formattedDesc}$2`);
+    html = html.replace(/(<span class=["']?[^"'>]*advc-ad-description__text[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedDesc}$3`);
+    html = html.replace(/(<span class=["']?[^"'>]*typo-body-medium text-neutral-130[^"'>]*["']?[^>]*>)(?:iPhone 17[\s\S]*?Sem nota|Geladeira Brastemp[\s\S]*?informações!)(<\/span>)/gi, `$1${formattedDesc}$2`);
   }
 
   // 8. Galeria de Fotos - Substituir as 5 imagens da galeria hero
@@ -109,7 +110,7 @@ function renderAdHtml(rawHtml, config) {
 
   // 10. Atualizar Vendedor
   if (s.name) {
-    html = html.replace(/(class="[^"]*advc-mini-profile__name[^"]*"[^>]*>)([\s\S]*?)(<\/(?:span|div|a)>)/gi, `$1${s.name}$3`);
+    html = html.replace(/(class=["']?[^"'>]*advc-mini-profile__name[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/(?:span|div|a)>)/gi, `$1${s.name}$3`);
   }
 
   return html;
