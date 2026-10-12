@@ -253,20 +253,29 @@ function syncAdFilesOnDisk(config) {
 }
 
 async function handleRequest(req, res) {
-  let reqPath = decodeURI(req.url.split('?')[0]);
-  if (reqPath.startsWith('/api/index.js') || reqPath === '/api/index.js') {
-    const origPath = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'] || req.headers['x-invoke-path'];
-    if (origPath && !origPath.startsWith('/api/index.js')) {
-      reqPath = decodeURI(origPath.split('?')[0]);
-    } else {
-      try {
-        const u = new URL(req.url, 'http://localhost');
-        if (u.searchParams.has('__orig_path')) {
-          reqPath = decodeURI(u.searchParams.get('__orig_path').split('?')[0]);
-        }
-      } catch (e) {}
-    }
+  // Global CORS and preflight handling
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
   }
+
+  let reqPath = decodeURI(req.url.split('?')[0]);
+  try {
+    const u = new URL(req.url, 'http://localhost');
+    if (u.searchParams.has('__orig_path')) {
+      reqPath = decodeURI(u.searchParams.get('__orig_path').split('?')[0]);
+    } else if (reqPath.startsWith('/api/index.js') || reqPath === '/api/index.js') {
+      const orig = req.headers['x-forwarded-uri'] || req.headers['x-matched-path'] || req.headers['x-invoke-path'];
+      if (orig && !orig.startsWith('/api/index.js')) {
+        reqPath = decodeURI(orig.split('?')[0]);
+      }
+    }
+  } catch (e) {}
 
   // Normalize trailing slash (e.g. /9bkp/ -> /9bkp)
   if (reqPath.length > 1 && reqPath.endsWith('/')) {
@@ -749,7 +758,13 @@ async function handleRequest(req, res) {
 
   const filePath = path.join(DIR, reqPath);
 
-  // Security check
+  // Security check: Never serve server-side code or unhandled /api/ as static
+  if (reqPath === '/api/index.js' || reqPath === '/server.js' || filePath.endsWith('server.js') || filePath.endsWith('api/index.js') || reqPath.startsWith('/api/')) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Endpoint nao encontrado' }));
+    return;
+  }
+
   if (!filePath.startsWith(DIR)) {
     res.writeHead(403);
     res.end('Acesso proibido');
