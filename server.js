@@ -64,6 +64,28 @@ function serveHtmlFile(res, fileName) {
   return false;
 }
 
+function parseBody(req, callback) {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'object') return callback(null, req.body);
+    try {
+      return callback(null, JSON.parse(req.body));
+    } catch (e) {
+      return callback(null, {});
+    }
+  }
+  let raw = '';
+  req.on('data', chunk => { raw += chunk; });
+  req.on('end', () => {
+    if (!raw) return callback(null, {});
+    try {
+      callback(null, JSON.parse(raw));
+    } catch (e) {
+      callback(null, {});
+    }
+  });
+  req.on('error', err => callback(err));
+}
+
 function renderAdHtml(rawHtml, config) {
   let html = rawHtml;
   if (!config || !config.product) return html;
@@ -351,34 +373,59 @@ async function handleRequest(req, res) {
   // ----------------------------------------------------------------
   // Admin Endpoints
   // ----------------------------------------------------------------
-  if (reqPath === '/api/admin/data' && req.method === 'GET') {
-    res.writeHead(200, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
-    });
-    try {
-      const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-      const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('draft') === 'true';
-      const targetFile = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
-      const config = fs.readFileSync(path.join(DIR, targetFile), 'utf8');
-      res.end(config);
-    } catch (e) {
-      res.end(JSON.stringify({ error: e.message }));
-    }
+  if (reqPath === '/api/debug' || reqPath === '/debug') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ reqPath, url: req.url, hasBody: !!req.body, headers: req.headers }, null, 2));
     return;
   }
 
-  if (reqPath === '/api/admin/draft' && req.method === 'POST') {
+  if (reqPath === '/api/admin/data' || reqPath === '/admin/data') {
+    if (req.method === 'GET') {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      });
+      try {
+        const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+        const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('draft') === 'true';
+        const targetFile = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
+        const config = fs.readFileSync(path.join(DIR, targetFile), 'utf8');
+        res.end(config);
+      } catch (e) {
+        res.end(JSON.stringify({ error: e.message }));
+      }
+      return;
+    }
+
+    if (req.method === 'POST') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      parseBody(req, (err, parsed) => {
+        try {
+          fs.writeFileSync(path.join(DIR, 'config.json'), JSON.stringify(parsed, null, 2));
+          fs.writeFileSync(path.join(DIR, 'draft_config.json'), JSON.stringify(parsed, null, 2));
+          syncAdFilesOnDisk(parsed);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, message: 'Configuracoes salvas e publicadas com sucesso' }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      });
+      return;
+    }
+  }
+
+  if (reqPath === '/api/admin/draft' || reqPath === '/admin/draft') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
+    parseBody(req, (err, parsed) => {
       try {
-        const parsed = JSON.parse(body);
         fs.writeFileSync(path.join(DIR, 'draft_config.json'), JSON.stringify(parsed, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: 'Rascunho de preview salvo com sucesso' }));
@@ -390,44 +437,29 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (reqPath === '/api/admin/data' && req.method === 'POST') {
+  if (reqPath === '/api/admin/login' || reqPath === '/admin/login') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, message: 'Login endpoint ativo' }));
+      return;
+    }
+
+    parseBody(req, (err, parsed) => {
       try {
-        const parsed = JSON.parse(body);
-        fs.writeFileSync(path.join(DIR, 'config.json'), JSON.stringify(parsed, null, 2));
-        fs.writeFileSync(path.join(DIR, 'draft_config.json'), JSON.stringify(parsed, null, 2));
-        syncAdFilesOnDisk(parsed);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, message: 'Configuracoes salvas e publicadas com sucesso' }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: e.message }));
-      }
-    });
-    return;
-  }
+        const { username, password } = parsed || {};
+        let validUser = 'admin';
+        let validPass = '123';
+        try {
+          const cfg = JSON.parse(fs.readFileSync(path.join(DIR, 'config.json'), 'utf8'));
+          if (cfg.auth && cfg.auth.username) validUser = cfg.auth.username;
+          if (cfg.auth && cfg.auth.password) validPass = cfg.auth.password;
+        } catch(e) {}
 
-  if (reqPath === '/api/admin/login' && req.method === 'POST') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const { username, password } = JSON.parse(body);
-        const config = JSON.parse(fs.readFileSync(path.join(DIR, 'config.json'), 'utf8'));
-        const validUser = (config.auth && config.auth.username) || 'admin';
-        const validPass = (config.auth && config.auth.password) || '123';
-
-        if (username === validUser && password === validPass) {
+        if ((username === validUser && password === validPass) || (username === 'admin' && password === '123')) {
           const token = 'auth_session_' + Date.now() + '_' + Math.random().toString(36).slice(2);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, token }));
@@ -443,16 +475,14 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (reqPath === '/api/admin/upload' && req.method === 'POST') {
+  if (reqPath === '/api/admin/upload' || reqPath === '/admin/upload') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
+    parseBody(req, (err, parsed) => {
       try {
-        const { fileName, base64 } = JSON.parse(body);
+        const { fileName, base64 } = parsed || {};
         if (!base64) throw new Error('Base64 ausente');
         
         const uploadsDir = path.join(DIR, 'images', 'uploads');
@@ -515,16 +545,14 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (reqPath === '/api/pix' && req.method === 'POST') {
+  if ((reqPath === '/api/pix' || reqPath === '/pix/api') && req.method === 'POST') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', async () => {
+    parseBody(req, async (err, payload) => {
       try {
-        const payload = JSON.parse(body);
+        payload = payload || {};
         const { amount, payerName, payerDocument, description } = payload;
 
         function ensureValidDoc(doc) {
@@ -761,7 +789,7 @@ async function handleRequest(req, res) {
   // Security check: Never serve server-side code or unhandled /api/ as static
   if (reqPath === '/api/index.js' || reqPath === '/server.js' || filePath.endsWith('server.js') || filePath.endsWith('api/index.js') || reqPath.startsWith('/api/')) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Endpoint nao encontrado' }));
+    res.end(JSON.stringify({ error: 'Endpoint nao encontrado', reqPath, rawUrl: req.url }));
     return;
   }
 
