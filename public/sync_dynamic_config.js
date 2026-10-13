@@ -32,17 +32,21 @@
         if (p.title) {
           document.title = p.title + ' | OLX';
           
-          // OLX adview title element (Desktop and Mobile)
-          document.querySelectorAll('h1, h1#description-title, [data-section="title"] *').forEach(el => {
+          // OLX adview title element (Desktop and Mobile) - SEMPRE em Negrito (font-weight: 700)
+          document.querySelectorAll('h1#description-title, #description-title h1, #ad-title, .olx-product-title, .advc-adview-section__title-row h1, [data-section="title"] h1, h1').forEach(el => {
             el.textContent = p.title;
+            el.style.setProperty('font-weight', '700', 'important');
+            el.style.setProperty('color', '#111827', 'important');
+            el.style.setProperty('font-family', '"Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 'important');
           });
-          // Desktop specific title row (don't overwrite section headers on mobile)
-          if (!path.includes('mobile.html')) {
-            document.querySelectorAll('.advc-adview-section__title').forEach(el => {
-              if (el.id === 'description-title' || el.closest('[data-section="title"]')) {
-                el.textContent = p.title;
-              }
-            });
+
+          // Desktop specific title row
+          const desktopTitleEl = document.querySelector('#description-title .advc-adview-section__title, #description-title h1, #ad-title, .olx-product-title');
+          if (desktopTitleEl) {
+            desktopTitleEl.textContent = p.title;
+            desktopTitleEl.style.setProperty('font-weight', '700', 'important');
+            desktopTitleEl.style.setProperty('color', '#111827', 'important');
+            desktopTitleEl.style.setProperty('font-family', '"Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 'important');
           }
 
           // Meta tags & open graph
@@ -414,19 +418,43 @@
       // ----------------------------------------------------
       if (path.startsWith('/checkout')) {
         if (p && p.title) {
-          const fig = document.querySelector('figcaption');
-          if (fig) fig.textContent = p.title;
+          const fig = document.querySelector('#checkout-summary-title, figcaption');
+          if (fig) {
+            fig.textContent = p.title;
+            fig.style.setProperty('font-weight', '700', 'important');
+            fig.style.setProperty('color', '#111827', 'important');
+            fig.style.setProperty('font-family', '"Nunito Sans", -apple-system, sans-serif', 'important');
+          }
         }
         if (p && p.images && p.images[0]) {
-          const thumb = document.querySelector('figure img');
-          if (thumb) thumb.src = p.images[0];
+          const thumb = document.querySelector('#checkout-summary-thumb, figure img');
+          if (thumb) {
+            thumb.src = p.images[0];
+            thumb.removeAttribute('srcset');
+            thumb.style.objectFit = 'cover';
+            thumb.style.display = 'block';
+            thumb.style.borderRadius = '8px';
+            if (p.title) thumb.alt = 'Imagem de ' + p.title;
+          }
         }
         if (s && s.name) {
-          document.querySelectorAll('*').forEach(el => {
-            if (el.children.length === 0 && el.textContent.includes('WILLIAM N')) {
-              el.textContent = s.name.toUpperCase();
+          const sNameEl = document.getElementById('checkout-seller-name');
+          if (sNameEl) {
+            sNameEl.textContent = s.name.toUpperCase();
+          }
+          document.querySelectorAll('p.typo-body-small, span, p').forEach(el => {
+            if (el.textContent.includes('Vendedor:')) {
+              el.innerHTML = '<span class="text-neutral-110">Vendedor:</span> <span id="checkout-seller-name" style="font-weight: 600; color: #111827;">' + s.name.toUpperCase() + '</span>';
             }
           });
+        }
+        if (s && s.avatar) {
+          const sellerAvatarEl = document.querySelector('#checkout-seller-avatar, img[data-ds-component="DS-Avatar"]');
+          if (sellerAvatarEl) {
+            sellerAvatarEl.src = s.avatar;
+            sellerAvatarEl.style.objectFit = 'cover';
+            sellerAvatarEl.style.borderRadius = '50%';
+          }
         }
 
         const formattedProdPrice = fmtCurrencyBRL(productPriceNum);

@@ -209,10 +209,11 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/(<div class=["']?[^"'>]*olx-core-badge--rectangle[^"'>]*["']?[^>]*>[\s\S]*?<span[^>]*>)(?:10x de R\$ 435,00 sem juros|12x[\s\S]*?)(<\/span>)/gi, `$1${p.installments}$2`);
   }
 
-  // 5. Título do Anúncio (H1 e Seção - Desktop e Mobile)
+  // 5. Título do Anúncio (H1 e Seção - Desktop e Mobile) - SEMPRE Negrito (font-weight: 700)
   if (p.title) {
-    html = html.replace(/(class=["']?[^"'>]*advc-adview-section__title[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/(?:h1|span|div)>)/gi, `$1${p.title}$3`);
     html = html.replace(/(<h1[^>]*id=["']?description-title["']?[^>]*>)([\s\S]*?)(<\/h1>)/gi, `$1${p.title}$3`);
+    html = html.replace(/(<h1[^>]*id=["']?ad-title["']?[^>]*>)([\s\S]*?)(<\/h1>)/gi, `$1${p.title}$3`);
+    html = html.replace(/(<h1[^>]*class=["']?[^"'>]*olx-product-title[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/h1>)/gi, `$1${p.title}$3`);
   }
 
   // 6. Categoria no Breadcrumb e na Tabela de Detalhes
@@ -266,8 +267,6 @@ function renderAdHtml(rawHtml, config) {
       }
       return tag;
     });
-    html = html.replace(/(<img\b[^>]*\balt=["']Foto de [^"']*["'][^>]*\bsrc=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, (m, g1) => `${g1}"${s.avatar}"`);
-    html = html.replace(/(<img\b[^>]*\bsrc=)(?:"[^"]*"|'[^']*'|[^\s>]+)([^>]*\balt=["']Foto de [^"']*["'][^>]*>)/gi, (m, g1, g2) => `${g1}"${s.avatar}"${g2}`);
   }
   if (s.lastAccess) {
     html = html.replace(/Último acesso[^<]*/gi, s.lastAccess);
@@ -359,6 +358,28 @@ function syncAdFilesOnDisk(config) {
       fs.writeFileSync(perfilFile, rawPerfil, 'utf8');
       console.log('[Sync] perfil.html atualizado em disco!');
     }
+    const chkFiles = [path.join(DIR, 'checkout.html'), path.join(DIR, 'public', 'checkout.html')];
+    chkFiles.forEach(chkPath => {
+      if (fs.existsSync(chkPath) && config && config.product) {
+        let rawChk = fs.readFileSync(chkPath, 'utf8');
+        const p = config.product;
+        const s = config.seller;
+        if (p.title) {
+          rawChk = rawChk.replace(/(<figcaption[^>]*id=["']?checkout-summary-title["']?[^>]*>)([\s\S]*?)(<\/figcaption>)/gi, `$1${p.title}$3`);
+        }
+        if (p.images && p.images[0]) {
+          rawChk = rawChk.replace(/(<img[^>]*id=["']?checkout-summary-thumb["']?[^>]*src=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, `$1"${p.images[0]}"`);
+          rawChk = rawChk.replace(/srcset=["']\/iphone-thumb\.webp[^"']*["']/gi, '');
+        }
+        if (s && s.name) {
+          rawChk = rawChk.replace(/(<span[^>]*id=["']?checkout-seller-name["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${s.name.toUpperCase()}$3`);
+        }
+        if (s && s.avatar) {
+          rawChk = rawChk.replace(/(<img[^>]*id=["']?checkout-seller-avatar["']?[^>]*src=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, `$1"${s.avatar}"`);
+        }
+        fs.writeFileSync(chkPath, rawChk, 'utf8');
+      }
+    });
   } catch (e) {
     console.error('[Sync Error]', e.message);
   }
@@ -875,6 +896,47 @@ async function handleRequest(req, res) {
   }
 
   if (reqPath === '/checkout' || reqPath === '/checkout.html') {
+    try {
+      const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('preview') === '1';
+      const cfg = loadCurrentConfig(isDraft);
+      const chkPath = path.join(DIR, 'checkout.html');
+      if (fs.existsSync(chkPath)) {
+        let content = fs.readFileSync(chkPath, 'utf8');
+        const p = cfg.product || {};
+        const s = cfg.seller || {};
+        if (p.title) {
+          content = content.replace(/(<figcaption[^>]*id=["']?checkout-summary-title["']?[^>]*>)([\s\S]*?)(<\/figcaption>)/gi, `$1${p.title}$3`);
+        }
+        if (p.images && p.images[0]) {
+          content = content.replace(/(<img[^>]*id=["']?checkout-summary-thumb["']?[^>]*src=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, `$1"${p.images[0]}"`);
+          content = content.replace(/srcset=["']\/iphone-thumb\.webp[^"']*["']/gi, '');
+        }
+        if (s && s.name) {
+          content = content.replace(/(<span[^>]*id=["']?checkout-seller-name["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${s.name.toUpperCase()}$3`);
+        }
+        if (s && s.avatar) {
+          content = content.replace(/(<img[^>]*id=["']?checkout-seller-avatar["']?[^>]*src=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, `$1"${s.avatar}"`);
+        }
+        const htmlTagMatch = content.match(/<html[^>]*>/i);
+        if (htmlTagMatch) {
+          content = content.replace(/<script id="initial-olx-config">[\s\S]*?<\/script>/g, '');
+          const scriptTag = `<script id="initial-olx-config">window.__INITIAL_OLX_CONFIG__ = ${JSON.stringify(cfg)};</script>`;
+          content = content.replace(htmlTagMatch[0], htmlTagMatch[0] + '\n' + scriptTag);
+        }
+        const buf = Buffer.from(content, 'utf8');
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Length': buf.length,
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        });
+        res.end(buf);
+        return;
+      }
+    } catch(e) {
+      console.error('[Checkout Render Error]', e.message);
+    }
     if (serveHtmlFile(res, 'checkout.html')) return;
     reqPath = '/checkout.html';
   } else if (reqPath === '/pix' || reqPath === '/pix.html' || reqPath.startsWith('/pedidos')) {
