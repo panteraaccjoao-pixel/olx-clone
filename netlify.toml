@@ -1,0 +1,37 @@
+[build]
+  command = "node sync_public.js"
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  included_files = ["config.json", "draft_config.json", "server.js", "iphone-17-branco-olx.html", "index.html", "mobile.html"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/9bkp"
+  to = "/admin.html"
+  status = 200
+
+[[redirects]]
+  from = "/9bkp.html"
+  to = "/admin.html"
+  status = 200
+
+[[redirects]]
+  from = "/checkout"
+  to = "/checkout.html"
+  status = 200
+
+[[redirects]]
+  from = "/pix"
+  to = "/pix.html"
+  status = 200
+
+[[redirects]]
+  from = "/perfil"
+  to = "/perfil.html"
+  status = 200

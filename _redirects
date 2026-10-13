@@ -1,0 +1,12 @@
+# Netlify API redirects to serverless function
+/api/*  /.netlify/functions/api/:splat  200
+
+# Clean URLs
+/9bkp   /admin.html  200
+/9bkp.html   /admin.html  200
+/checkout   /checkout.html  200
+/pix   /pix.html  200
+/perfil   /perfil.html  200
+
+# Fallbacks
+/   /index.html  200

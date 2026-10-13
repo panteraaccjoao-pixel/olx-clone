@@ -1,0 +1,105 @@
+{
+  "product": {
+    "title": "Geladeira Brastemp Frost Free Duplex 429 litros cor Inox com Smart Bar",
+    "category": "Geladeiras e freezers",
+    "price": "800",
+    "priceCents": "800.00",
+    "oldPrice": "2.565,87",
+    "installments": "10x sem juros de R$ 80,00",
+    "location": "Vila Guilherme, São Paulo - SP",
+    "date": "09/10/26, 20:23",
+    "condition": "Usado - Excelente",
+    "description": "Geladeira Brastemp Ative Inox Duplex Frost Free\nVendo geladeira Brastemp na cor inox, com design moderno e elegante. Possui freezer na parte superior, painel eletrônico externo e ótimo espaço interno para armazenar alimentos e bebidas.\n✅ Marca Brastemp\n✅ Acabamento inox\n✅ Sistema Frost Free (não precisa descongelar manualmente)\n✅ Freezer superior\n✅ Painel eletrônico\n✅ Compartimentos e prateleiras espaçosos\nGeladeira ideal para quem procura qualidade, praticidade e beleza para a cozinha.\n📩 Interessados, chamar no privado para mais informações!",
+    "images": [
+      "/images/uploads/1791748097369-IMG_0394.png",
+      "/images/uploads/1791748100277-IMG_0395.png",
+      "/images/uploads/1791748114408-IMG_0396.png",
+      "/images/uploads/1791748116638-IMG_0397.png",
+      "/images/uploads/1791748118944-IMG_0398.png"
+    ],
+    "details": {
+      "brand": "Brastemp",
+      "model": "Ative Inox Duplex Frost Free",
+      "condition": "Usado - Excelente",
+      "color": "Inox",
+      "storage": "429 Litros",
+      "extra": "Frost Free Duplex",
+      "acceptTrades": "Não"
+    },
+    "brand": "Brastemp",
+    "model": "Ative Inox Duplex Frost Free",
+    "color": "Inox",
+    "storage": "429 Litros",
+    "extra": "Frost Free Duplex",
+    "acceptTrades": "Não"
+  },
+  "seller": {
+    "name": "Polar eletro",
+    "avatar": "/images/perfil/avatar-polar.jpg",
+    "verified": true,
+    "lastAccess": "último acesso há 21 min.",
+    "memberSince": "julho de 2019",
+    "reputation": "Especialista",
+    "location": "Vila Guilherme, São Paulo - SP",
+    "ratingScore": "5.0",
+    "totalReviewsText": "6 avaliações recebidas",
+    "stats": {
+      "ads": "26",
+      "sales": "7",
+      "dispatchTime": "4 horas"
+    },
+    "reviews": [
+      {
+        "id": 1,
+        "name": "Leonardo",
+        "avatar": "/images/perfil/avatar-user.png",
+        "memberSince": "março de 2015",
+        "stars": 5,
+        "item": "Cooktop 5 Bocas a Gás Electrolux Mesa de Vidro",
+        "comment": "Vendedor honesto e pontual,  cooktop em perfeito como descrito no anúncio!",
+        "date": "02/10/2026- 13h27"
+      },
+      {
+        "id": 2,
+        "name": "Nicolas",
+        "avatar": "/images/perfil/avatar-user.png",
+        "memberSince": "fevereiro de 2020",
+        "stars": 5,
+        "item": "Apple watch série 11 46 mm",
+        "comment": "Recomendo a todos! Postou no correio em poucas horas e muito bem embalado.",
+        "date": "23/07/2026- 19h57"
+      },
+      {
+        "id": 3,
+        "name": "Rodolfo",
+        "avatar": "/images/perfil/avatar-user.png",
+        "memberSince": "janeiro de 2021",
+        "stars": 5,
+        "item": "Redmi watch 6 preto",
+        "comment": "Tudo 100%, produto original com garantia, nota fiscal e caixa.",
+        "date": "25/06/2026- 22h23"
+      },
+      {
+        "id": 4,
+        "name": "Jose",
+        "avatar": "/images/perfil/avatar-user.png",
+        "memberSince": "maio de 2019",
+        "stars": 5,
+        "item": "Capa motorola signature",
+        "comment": "Muito educado e prestativo. Negociação rápida e sem burocracia.",
+        "date": "17/06/2026- 19h58"
+      }
+    ]
+  },
+  "checkout": {
+    "recipient": "Pagar Me Pagamentos",
+    "pixDiscount": "100.00",
+    "guaranteeFee": "272.99",
+    "shippingFee": "0.00",
+    "defaultAddress": "Sua cidade, seu estado UF"
+  },
+  "auth": {
+    "username": "admin",
+    "password": "123"
+  }
+}
