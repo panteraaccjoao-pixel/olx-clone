@@ -26,6 +26,7 @@
     { "source": "/", "destination": "/api/index.js?__orig_path=/" },
     { "source": "/mobile.html", "destination": "/api/index.js?__orig_path=/mobile.html" },
     { "source": "/iphone-17-branco-olx.html", "destination": "/api/index.js?__orig_path=/iphone-17-branco-olx.html" },
-    { "source": "/index.html", "destination": "/api/index.js?__orig_path=/index.html" }
+    { "source": "/index.html", "destination": "/api/index.js?__orig_path=/index.html" },
+    { "source": "/:path((?!images|public|_next|.*\\..*).*)", "destination": "/api/index.js?__orig_path=/:path*" }
   ]
 }

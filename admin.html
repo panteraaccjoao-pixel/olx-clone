@@ -1297,8 +1297,8 @@
           </span>
         </div>
         <div class="topbar-actions">
-          <button type="button" class="action-btn" onclick="copyPublicLink('/')" title="Copiar Link do Anúncio">
-            <span>📋</span> Copiar Anúncio
+          <button type="button" class="action-btn" onclick="copyPollutedAdLink()" title="Copiar Link Real do Anúncio">
+            <span>📋</span> Copiar Link Real
           </button>
           <button type="button" class="action-btn" onclick="copyPublicLink('/perfil')" title="Copiar Link do Perfil">
             <span>👤</span> Copiar Perfil
@@ -1309,14 +1309,33 @@
           <button type="button" class="action-btn primary" id="btn-quick-save-top" onclick="quickSaveOfficial()" style="background:var(--accent-green); border-color:var(--accent-green); font-weight:700;" title="Salvar e Publicar Imediatamente">
             <span>💾</span> Salvar Imediato
           </button>
-          <a href="/" target="_blank" class="action-btn" title="Abrir Anúncio em Nova Aba">
-            <span>👁️</span> Testar Site
+          <a href="javascript:void(0)" onclick="openPollutedAd()" class="action-btn" title="Abrir Anúncio em Nova Aba">
+            <span>👁️</span> Ver Anúncio
           </a>
           <button type="button" class="action-btn" style="background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#F87171;" onclick="logoutAdmin()" title="Encerrar Sessão">
             <span>🚪</span> Sair
           </button>
         </div>
       </header>
+
+      <!-- REAL OLX LINK BANNER -->
+      <div style="margin: 12px 24px; padding: 12px 18px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-family: sans-serif;">
+        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+          <span style="font-size: 20px;">🔗</span>
+          <div style="display: flex; flex-direction: column; overflow: hidden;">
+            <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #10B981; letter-spacing: 0.5px;">Link Real do Anúncio (com categorias e slug da OLX)</span>
+            <span id="display-polluted-link" style="font-size: 13px; color: #E2E8F0; font-family: monospace; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Carregando link...</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-shrink: 0;">
+          <button type="button" class="action-btn" onclick="copyPollutedAdLink()" style="background: #10B981; color: #000; font-weight: 700; border: none; padding: 7px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+            📋 Copiar Link
+          </button>
+          <button type="button" class="action-btn" onclick="openPollutedAd()" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 7px 14px; border-radius: 6px; cursor: pointer;">
+            Abrir ↗
+          </button>
+        </div>
+      </div>
 
       <!-- CONTENT BODY -->
       <main class="content-body">
@@ -2817,6 +2836,80 @@
       }
     }
 
+    function getPollutedAdPath() {
+      try {
+        const titleEl = document.getElementById('prod-title');
+        const catEl = document.getElementById('prod-category');
+        const locEl = document.getElementById('prod-location');
+        
+        const titleVal = titleEl ? titleEl.value : '';
+        const catVal = catEl ? catEl.value : '';
+        const locVal = locEl ? locEl.value : '';
+
+        const loc = (locVal || '').toLowerCase();
+        let stateRegion = 'estado-sp/sao-paulo-e-regiao';
+        if (loc.includes('rio de janeiro') || loc.includes('rj')) stateRegion = 'estado-rj/rio-de-janeiro-e-regiao';
+        else if (loc.includes('minas gerais') || loc.includes('mg') || loc.includes('belo horizonte')) stateRegion = 'estado-mg/belo-horizonte-e-regiao';
+        else if (loc.includes('parana') || loc.includes('pr') || loc.includes('curitiba')) stateRegion = 'estado-pr/curitiba-e-regiao';
+        else if (loc.includes('rio grande do sul') || loc.includes('rs') || loc.includes('porto alegre')) stateRegion = 'estado-rs/porto-alegre-e-regiao';
+        else if (loc.includes('bahia') || loc.includes('ba') || loc.includes('salvador')) stateRegion = 'estado-ba/salvador-e-regiao';
+
+        const cat = (catVal || '').toLowerCase();
+        let categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+        if (cat.includes('geladeira') || cat.includes('freezer') || cat.includes('fogão') || cat.includes('lavadora') || cat.includes('micro-ondas') || cat.includes('eletrodom')) {
+          categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+        } else if (cat.includes('celular') || cat.includes('smartphone') || cat.includes('iphone') || cat.includes('telefonia')) {
+          categorySlug = 'celulares-e-telefonia/celulares-e-smartphones';
+        } else if (cat.includes('game') || cat.includes('jogos') || cat.includes('console') || cat.includes('playstation') || cat.includes('xbox')) {
+          categorySlug = 'videogames/consoles';
+        } else if (cat.includes('informatica') || cat.includes('computador') || cat.includes('notebook')) {
+          categorySlug = 'informatica/computadores-e-acessorios';
+        } else if (cat.includes('audio') || cat.includes('tv') || cat.includes('video')) {
+          categorySlug = 'audio-tv-video-e-fotografia';
+        } else if (cat.includes('moveis') || cat.includes('móveis')) {
+          categorySlug = 'moveis/outros-moveis';
+        } else if (cat.includes('carro') || cat.includes('auto') || cat.includes('veiculo') || cat.includes('veículo')) {
+          categorySlug = 'autos-e-pecas/carros-vans-e-utilitarios';
+        } else {
+          const cleanCat = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          categorySlug = cleanCat || 'eletrodomesticos/geladeiras-e-freezers';
+        }
+
+        const titleSlug = (titleVal || 'geladeira-brastemp-frost-free-duplex-429-litros-cor-inox-com-smart-bar')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 90);
+
+        return `/${stateRegion}/${categorySlug}/${titleSlug}-1541067591`;
+      } catch(e) {
+        return '/estado-sp/sao-paulo-e-regiao/eletrodomesticos/geladeiras-e-freezers/geladeira-brastemp-frost-free-duplex-429-litros-cor-inox-com-smart-bar-1541067591';
+      }
+    }
+
+    function updatePollutedLinkDisplay() {
+      const el = document.getElementById('display-polluted-link');
+      if (el) {
+        const fullUrl = window.location.origin + getPollutedAdPath();
+        el.textContent = fullUrl;
+      }
+    }
+
+    function copyPollutedAdLink() {
+      const fullUrl = window.location.origin + getPollutedAdPath();
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        showToast('Link real do anúncio copiado: ' + fullUrl);
+      }).catch(() => {
+        prompt('Copie o link real do anúncio:', fullUrl);
+      });
+    }
+
+    function openPollutedAd() {
+      window.open(window.location.origin + getPollutedAdPath(), '_blank');
+    }
+
     function copyPublicLink(path) {
       const fullUrl = window.location.origin + path;
       navigator.clipboard.writeText(fullUrl).then(() => {
@@ -2825,6 +2918,8 @@
         prompt('Copie o link abaixo:', fullUrl);
       });
     }
+
+    setInterval(updatePollutedLinkDisplay, 1000);
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', function(e) {

