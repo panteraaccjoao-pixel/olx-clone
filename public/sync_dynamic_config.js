@@ -16,8 +16,31 @@
     return html;
   }
 
+  let lastAppliedKey = '';
+  function getConfigKey(data) {
+    if (!data || !data.product) return '';
+    const p = data.product;
+    const s = data.seller || {};
+    return [
+      p.title || '',
+      p.price || '',
+      p.oldPrice || '',
+      p.category || '',
+      p.location || '',
+      p.installments || '',
+      (p.images ? p.images.join(',') : ''),
+      s.name || '',
+      s.avatar || ''
+    ].join('||');
+  }
+
   function applyData(data) {
     if (!data || !data.product) return;
+    const key = getConfigKey(data);
+    if (key && key === lastAppliedKey) {
+      return; // Already applied, skip DOM mutations to prevent flicker!
+    }
+    lastAppliedKey = key;
     const p = data.product;
     const s = data.seller;
     const c = data.checkout;
@@ -41,9 +64,21 @@
             else if (loc.includes('bahia') || loc.includes('ba') || loc.includes('salvador')) stateRegion = 'estado-ba/salvador-e-regiao';
 
             const cat = (p.category || '').toLowerCase();
-            let categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
-            if (cat.includes('geladeira') || cat.includes('freezer') || cat.includes('fogão') || cat.includes('lavadora') || cat.includes('micro-ondas') || cat.includes('eletrodom')) {
+            let categorySlug = 'eletrodomesticos/fogoes-fornos-e-cooktops';
+            if (cat.includes('geladeira') || cat.includes('freezer')) {
               categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+            } else if (cat.includes('fogão') || cat.includes('fogao') || cat.includes('cooktop') || cat.includes('forno')) {
+              categorySlug = 'eletrodomesticos/fogoes-fornos-e-cooktops';
+            } else if (cat.includes('lavar') || cat.includes('secar') || cat.includes('lavadora')) {
+              categorySlug = 'eletrodomesticos/maquinas-de-lavar-e-secar';
+            } else if (cat.includes('micro-ondas') || cat.includes('microondas')) {
+              categorySlug = 'eletrodomesticos/micro-ondas-e-fornos-eletricos';
+            } else if (cat.includes('ar condicionado') || cat.includes('ventilador')) {
+              categorySlug = 'eletrodomesticos/ar-condicionado-e-ventiladores';
+            } else if (cat.includes('eletroport')) {
+              categorySlug = 'eletrodomesticos/eletroportateis-de-cozinha';
+            } else if (cat.includes('aspirador') || cat.includes('limpeza')) {
+              categorySlug = 'eletrodomesticos/aspiradores-e-limpeza';
             } else if (cat.includes('celular') || cat.includes('smartphone') || cat.includes('iphone') || cat.includes('telefonia')) {
               categorySlug = 'celulares-e-telefonia/celulares-e-smartphones';
             } else if (cat.includes('game') || cat.includes('jogos') || cat.includes('console') || cat.includes('playstation') || cat.includes('xbox')) {
@@ -58,7 +93,7 @@
               categorySlug = 'autos-e-pecas/carros-vans-e-utilitarios';
             } else {
               const cleanCat = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-              categorySlug = cleanCat || 'eletrodomesticos/geladeiras-e-freezers';
+              categorySlug = cleanCat || 'eletrodomesticos/fogoes-fornos-e-cooktops';
             }
 
             const titleSlug = (p.title || 'anuncio-olx')
@@ -247,15 +282,17 @@
         // Product Images Gallery (PC & Mobile)
         if (p.images && p.images.length > 0) {
           const galleryImgs = document.querySelectorAll('.advc-gallery__image-wrap img, .advc-gallery__item img, picture.advc-gallery__image-wrap img');
-          p.images.forEach((url, idx) => {
-            if (galleryImgs[idx]) {
-              galleryImgs[idx].src = url;
-            }
-          });
+          if (galleryImgs && galleryImgs.length > 0) {
+            galleryImgs.forEach((img, idx) => {
+              const url = p.images[idx % p.images.length];
+              img.src = url;
+              img.alt = (p.title || 'Foto') + ' - Imagem ' + (idx + 1);
+            });
+          }
 
           // Lightbox modal integration
           if (typeof window.updateOlxLightboxPhotos === 'function') {
-            window.updateOlxLightboxPhotos(p.images);
+            window.updateOlxLightboxPhotos(p.images, p.title);
           } else if (Array.isArray(window.photos)) {
             window.photos = p.images.map((url, i) => ({
               url: url,
@@ -539,40 +576,58 @@
 
   }
 
-  async function applyAdminConfig() {
-    try {
-      const isDraft = window.location.search.includes('preview') || window.location.search.includes('draft');
-      if (isDraft) {
-        try {
-          const draftLocal = localStorage.getItem('olx_draft_config');
-          if (draftLocal) applyData(JSON.parse(draftLocal));
-        } catch(e) {}
-      } else {
-        if (window.__INITIAL_OLX_CONFIG__) {
-          applyData(window.__INITIAL_OLX_CONFIG__);
-        }
-        try {
-          const liveLocal = localStorage.getItem('olx_live_config');
-          if (liveLocal) applyData(JSON.parse(liveLocal));
-        } catch(e) {}
-      }
+  const isDraft = window.location.search.includes('preview') || window.location.search.includes('draft');
 
-      const res = await fetch('/api/admin/data?' + (isDraft ? 'draft=1&' : '') + 't=' + Date.now());
-      if (!res.ok) return;
-      const data = await res.json();
-      applyData(data);
-    } catch (e) {
-      console.error('[ConfigSync Error]', e);
-    }
-  }
-
-  if (window.location.search.includes('preview') || window.location.search.includes('draft')) {
+  // 1. Initial immediate paint without waiting for network
+  if (isDraft) {
     try {
       const draftLocal = localStorage.getItem('olx_draft_config');
       if (draftLocal) applyData(JSON.parse(draftLocal));
     } catch(e) {}
-  } else if (window.__INITIAL_OLX_CONFIG__) {
-    applyData(window.__INITIAL_OLX_CONFIG__);
+  } else {
+    let localApplied = false;
+    try {
+      const liveLocal = localStorage.getItem('olx_live_config');
+      if (liveLocal) {
+        const parsed = JSON.parse(liveLocal);
+        if (parsed && parsed.product && parsed.product.title) {
+          applyData(parsed);
+          localApplied = true;
+        }
+      }
+    } catch(e) {}
+
+    if (!localApplied && window.__INITIAL_OLX_CONFIG__) {
+      applyData(window.__INITIAL_OLX_CONFIG__);
+    }
+  }
+
+  // 2. Network sync: fetch latest config from server without resetting to old initial
+  async function applyAdminConfig() {
+    try {
+      const isDraft = window.location.search.includes('preview') || window.location.search.includes('draft');
+      const res = await fetch('/api/admin/data?' + (isDraft ? 'draft=1&' : '') + 't=' + Date.now());
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data || !data.product || !data.product.title) return;
+
+      if (!isDraft) {
+        try {
+          const liveLocal = localStorage.getItem('olx_live_config');
+          if (liveLocal) {
+            const localCfg = JSON.parse(liveLocal);
+            // If local config is newer, keep it and do not revert to stale server
+            if (localCfg.updatedAt && data.updatedAt && data.updatedAt < localCfg.updatedAt) {
+              return;
+            }
+          }
+        } catch(e) {}
+      }
+
+      applyData(data);
+    } catch (e) {
+      console.error('[ConfigSync Error]', e);
+    }
   }
 
   if (document.readyState === 'loading') {
@@ -580,9 +635,6 @@
   } else {
     applyAdminConfig();
   }
-
-  setTimeout(applyAdminConfig, 100);
-  setTimeout(applyAdminConfig, 400);
 
   window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'OLX_CONFIG_UPDATE') {

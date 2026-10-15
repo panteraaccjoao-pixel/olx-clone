@@ -2537,6 +2537,7 @@
       if (btnTop) { btnTop.disabled = true; btnTop.innerHTML = '<span>⏳</span> Salvando...'; }
 
       const officialPayload = buildPayloadFromForm();
+      officialPayload.updatedAt = Date.now();
 
       try {
         try {
@@ -2571,6 +2572,7 @@
       btnPublish.innerHTML = '<span>⏳</span> Aplicando no Anúncio Oficial...';
 
       const officialPayload = buildPayloadFromForm();
+      officialPayload.updatedAt = Date.now();
 
       try {
         try {
@@ -2855,9 +2857,21 @@
         else if (loc.includes('bahia') || loc.includes('ba') || loc.includes('salvador')) stateRegion = 'estado-ba/salvador-e-regiao';
 
         const cat = (catVal || '').toLowerCase();
-        let categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
-        if (cat.includes('geladeira') || cat.includes('freezer') || cat.includes('fogão') || cat.includes('lavadora') || cat.includes('micro-ondas') || cat.includes('eletrodom')) {
+        let categorySlug = 'eletrodomesticos/fogoes-fornos-e-cooktops';
+        if (cat.includes('geladeira') || cat.includes('freezer')) {
           categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+        } else if (cat.includes('fogão') || cat.includes('fogao') || cat.includes('cooktop') || cat.includes('forno')) {
+          categorySlug = 'eletrodomesticos/fogoes-fornos-e-cooktops';
+        } else if (cat.includes('lavar') || cat.includes('secar') || cat.includes('lavadora')) {
+          categorySlug = 'eletrodomesticos/maquinas-de-lavar-e-secar';
+        } else if (cat.includes('micro-ondas') || cat.includes('microondas')) {
+          categorySlug = 'eletrodomesticos/micro-ondas-e-fornos-eletricos';
+        } else if (cat.includes('ar condicionado') || cat.includes('ventilador')) {
+          categorySlug = 'eletrodomesticos/ar-condicionado-e-ventiladores';
+        } else if (cat.includes('eletroport')) {
+          categorySlug = 'eletrodomesticos/eletroportateis-de-cozinha';
+        } else if (cat.includes('aspirador') || cat.includes('limpeza')) {
+          categorySlug = 'eletrodomesticos/aspiradores-e-limpeza';
         } else if (cat.includes('celular') || cat.includes('smartphone') || cat.includes('iphone') || cat.includes('telefonia')) {
           categorySlug = 'celulares-e-telefonia/celulares-e-smartphones';
         } else if (cat.includes('game') || cat.includes('jogos') || cat.includes('console') || cat.includes('playstation') || cat.includes('xbox')) {
@@ -2872,7 +2886,7 @@
           categorySlug = 'autos-e-pecas/carros-vans-e-utilitarios';
         } else {
           const cleanCat = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-          categorySlug = cleanCat || 'eletrodomesticos/geladeiras-e-freezers';
+          categorySlug = cleanCat || 'eletrodomesticos/fogoes-fornos-e-cooktops';
         }
 
         const titleSlug = (titleVal || 'geladeira-brastemp-frost-free-duplex-429-litros-cor-inox-com-smart-bar')

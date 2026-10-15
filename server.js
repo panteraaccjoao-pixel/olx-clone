@@ -16,28 +16,50 @@ function loadCurrentConfig(isDraft = false) {
   if (isDraft && inMemoryDraft) return inMemoryDraft;
   if (!isDraft && inMemoryConfig) return inMemoryConfig;
 
-  const tmpFile = isDraft ? TMP_DRAFT : TMP_CONFIG;
-  if (fs.existsSync(tmpFile)) {
+  let diskData = null;
+  let diskMtime = 0;
+  const diskFile = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
+  const diskPath = path.join(DIR, diskFile);
+  if (fs.existsSync(diskPath)) {
     try {
-      const data = JSON.parse(fs.readFileSync(tmpFile, 'utf8'));
-      if (isDraft) inMemoryDraft = data;
-      else inMemoryConfig = data;
-      return data;
+      diskMtime = fs.statSync(diskPath).mtimeMs;
+      diskData = JSON.parse(fs.readFileSync(diskPath, 'utf8'));
     } catch(e) {}
   }
 
-  const diskFile = (isDraft && fs.existsSync(path.join(DIR, 'draft_config.json'))) ? 'draft_config.json' : 'config.json';
-  try {
-    const data = JSON.parse(fs.readFileSync(path.join(DIR, diskFile), 'utf8'));
-    if (isDraft) inMemoryDraft = data;
-    else inMemoryConfig = data;
-    return data;
-  } catch(e) {
-    return isDraft ? (inMemoryConfig || {}) : {};
+  let tmpData = null;
+  let tmpMtime = 0;
+  const tmpFile = isDraft ? TMP_DRAFT : TMP_CONFIG;
+  if (fs.existsSync(tmpFile)) {
+    try {
+      tmpMtime = fs.statSync(tmpFile).mtimeMs;
+      tmpData = JSON.parse(fs.readFileSync(tmpFile, 'utf8'));
+    } catch(e) {}
   }
+
+  let chosen = null;
+  if (diskData && tmpData) {
+    const diskTs = (diskData.updatedAt || 0) || diskMtime;
+    const tmpTs = (tmpData.updatedAt || 0) || tmpMtime;
+    chosen = (tmpTs > diskTs) ? tmpData : diskData;
+  } else {
+    chosen = diskData || tmpData || (isDraft ? (inMemoryConfig || {}) : {});
+  }
+
+  if (isDraft) inMemoryDraft = chosen;
+  else inMemoryConfig = chosen;
+  return chosen;
 }
 
 function saveCurrentConfig(data, isDraft = false) {
+  if (data && typeof data === 'object') {
+    data.updatedAt = data.updatedAt || Date.now();
+    const existing = isDraft ? (inMemoryDraft || loadCurrentConfig(true)) : (inMemoryConfig || loadCurrentConfig(false));
+    if (!data.auth && existing && existing.auth) {
+      data.auth = existing.auth;
+    }
+  }
+
   if (isDraft) {
     inMemoryDraft = data;
   } else {
@@ -60,6 +82,13 @@ function saveCurrentConfig(data, isDraft = false) {
   try {
     const targetFile = isDraft ? 'draft_config.json' : 'config.json';
     fs.writeFileSync(path.join(DIR, targetFile), JSON.stringify(data, null, 2), 'utf8');
+    try {
+      const publicTarget = path.join(DIR, 'public', targetFile);
+      if (fs.existsSync(path.join(DIR, 'public'))) {
+        fs.writeFileSync(publicTarget, JSON.stringify(data, null, 2), 'utf8');
+      }
+    } catch(e) {}
+
     if (!isDraft) {
       try { fs.writeFileSync(path.join(DIR, 'draft_config.json'), JSON.stringify(data, null, 2), 'utf8'); } catch(e) {}
       syncAdFilesOnDisk(data);
@@ -158,14 +187,6 @@ function renderAdHtml(rawHtml, config) {
 
   const formattedPrice = p.price ? (String(p.price).startsWith('R$') ? String(p.price) : 'R$ ' + p.price) : 'R$ 800';
 
-  // 1. Injetar window.__INITIAL_OLX_CONFIG__
-  const htmlTagMatch = html.match(/<html[^>]*>/i);
-  if (htmlTagMatch) {
-    html = html.replace(/<script id="initial-olx-config">[\s\S]*?<\/script>/g, '');
-    const scriptTag = `<script id="initial-olx-config">window.__INITIAL_OLX_CONFIG__ = ${JSON.stringify(config)};</script>`;
-    html = html.replace(htmlTagMatch[0], htmlTagMatch[0] + '\n' + scriptTag);
-  }
-
   // Injetar <base href="/"> para links absolutos em URLs aninhadas/poluídas
   if (!html.includes('<base ') && !html.includes('<base>')) {
     html = html.replace(/<head[^>]*>/i, '$&\n  <base href="/">');
@@ -223,7 +244,24 @@ function renderAdHtml(rawHtml, config) {
 
   // 6. Categoria no Breadcrumb e na Tabela de Detalhes
   if (p.category) {
-    html = html.replace(/(<li class=olx-core-breadcrumb__element><a [^>]*>)(?:Celulares e Smartphones|[\w\s]+)(<\/a><\/li>[\s\S]*?<li class=olx-core-breadcrumb__element><a [^>]*>Zona Norte)/gi, `$1${p.category}$2`);
+    html = html.replace(/(<ol class=olx-core-breadcrumb__list>[\s\S]*?<\/ol>)/i, (breadcrumbListHtml) => {
+      let count = 0;
+      return breadcrumbListHtml.replace(/(<li class=olx-core-breadcrumb__element><a [^>]*>)([\s\S]*?)(<\/a><\/li>)/gi, (m, prefix, text, suffix) => {
+        count++;
+        if (count === 1) {
+          const state = (p.location && p.location.includes('RJ')) ? 'Rio de Janeiro' : 'São Paulo';
+          return `${prefix}${state}${suffix}`;
+        }
+        if (count === 2) {
+          const region = (p.location && p.location.includes('RJ')) ? 'Rio de Janeiro e região' : 'São Paulo e região';
+          return `${prefix}${region}${suffix}`;
+        }
+        if (count === 3) {
+          return `${prefix}${p.category}${suffix}`;
+        }
+        return m;
+      });
+    });
     html = html.replace(/(<div class=advc-detail-item__text><span class=advc-detail-item__title>Categoria<\/span><a [^>]*>)([\s\S]*?)(<\/a><\/div>)/gi, `$1${p.category}$3`);
   }
 
@@ -235,11 +273,11 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/(<span class=["']?[^"'>]*typo-body-medium text-neutral-130[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${formattedDesc}$3`);
   }
 
-  // 8. Galeria de Fotos - Substituir as 5 imagens da galeria hero
+  // 8. Galeria de Fotos - Substituir as 5 imagens da galeria hero com rotação segura
   if (p.images && p.images.length > 0) {
     let imgIdx = 0;
     html = html.replace(/(<picture class=advc-gallery__image-wrap><img\s+src=)(?:"[^"]*"|[^ >]+)([\s\S]*?<\/picture>)/gi, (match, prefix, suffix) => {
-      const url = p.images[imgIdx] || p.images[0];
+      const url = p.images[imgIdx % p.images.length];
       imgIdx++;
       let cleanedSuffix = suffix.replace(/alt="[^"]*"/gi, `alt="${p.title || 'Foto'} - Imagem ${imgIdx}"`);
       return `${prefix}"${url}"${cleanedSuffix}`;
@@ -274,7 +312,8 @@ function renderAdHtml(rawHtml, config) {
     });
   }
   if (s.lastAccess) {
-    html = html.replace(/Último acesso[^<]*/gi, s.lastAccess);
+    html = html.replace(/(<span[^>]*class=["']?[^"'>]*(?:advc-mini-profile__status|text-neutral-110)[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, (m, g1, g2, g3) => g1 + s.lastAccess + g3);
+    html = html.replace(/Último acesso há [^<]+/gi, s.lastAccess);
   }
 
   // 11. Atualizar Localização no Mobile
@@ -285,10 +324,10 @@ function renderAdHtml(rawHtml, config) {
 
   // 12. Atualizar Cards de Detalhes / Características (Desktop e Mobile)
   const d = p.details || {
-    brand: p.brand || 'Brastemp',
-    model: p.model || 'Ative Inox Duplex Frost Free',
+    brand: p.brand || '',
+    model: p.model || '',
     condition: p.condition || 'Usado - Excelente',
-    color: p.color || 'Inox',
+    color: p.color || '',
     storage: p.storage || '',
     extra: p.extra || '',
     acceptTrades: p.acceptTrades || 'Não'
@@ -329,40 +368,55 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/(<span class=advc-detail-item__title[^>]*>Aceita trocas<\/span>\s*<span[^>]*>)([\s\S]*?)(<\/span>)/i, (m, g1, g2, g3) => g1 + d.acceptTrades + g3);
   }
 
+  // Injetar window.__INITIAL_OLX_CONFIG__ de forma 100% segura no FINAL para nunca ser corrompido por replaces no body
+  html = html.replace(/<script id="initial-olx-config">[\s\S]*?<\/script>/g, '');
+  const scriptTag = `<script id="initial-olx-config">window.__INITIAL_OLX_CONFIG__ = ${JSON.stringify(config)};</script>`;
+  const headTagMatch = html.match(/<head[^>]*>/i);
+  if (headTagMatch) {
+    html = html.replace(headTagMatch[0], headTagMatch[0] + '\n  ' + scriptTag);
+  } else {
+    const htmlTagMatch = html.match(/<html[^>]*>/i);
+    if (htmlTagMatch) {
+      html = html.replace(htmlTagMatch[0], htmlTagMatch[0] + '\n' + scriptTag);
+    }
+  }
+
   return html;
 }
 
 function syncAdFilesOnDisk(config) {
   try {
-    const adFile = path.join(DIR, 'iphone-17-branco-olx.html');
-    const indexFile = path.join(DIR, 'index.html');
-    const mobileFile = path.join(DIR, 'mobile.html');
-    const perfilFile = path.join(DIR, 'perfil.html');
-    if (fs.existsSync(adFile)) {
-      const raw = fs.readFileSync(adFile, 'utf8');
-      const rendered = renderAdHtml(raw, config);
-      fs.writeFileSync(adFile, rendered, 'utf8');
-      fs.writeFileSync(indexFile, rendered, 'utf8');
-      console.log('[Sync] iphone-17-branco-olx.html e index.html atualizados em disco!');
-    }
-    if (fs.existsSync(mobileFile)) {
-      const rawMobile = fs.readFileSync(mobileFile, 'utf8');
-      const renderedMobile = renderAdHtml(rawMobile, config);
-      fs.writeFileSync(mobileFile, renderedMobile, 'utf8');
-      console.log('[Sync] mobile.html atualizado em disco!');
-    }
-    if (fs.existsSync(perfilFile) && config && config.seller) {
-      let rawPerfil = fs.readFileSync(perfilFile, 'utf8');
-      const s = config.seller;
-      if (s.avatar) {
-        rawPerfil = rawPerfil.replace(/(<img\b[^>]*alt=["']Imagem do perfil da loja["'][^>]*src=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, (m, g1) => `${g1}"${s.avatar}"`);
+    const targets = [
+      { ad: path.join(DIR, 'iphone-17-branco-olx.html'), index: path.join(DIR, 'index.html'), mob: path.join(DIR, 'mobile.html'), perf: path.join(DIR, 'perfil.html') },
+      { ad: path.join(DIR, 'public', 'iphone-17-branco-olx.html'), index: path.join(DIR, 'public', 'index.html'), mob: path.join(DIR, 'public', 'mobile.html'), perf: path.join(DIR, 'public', 'perfil.html') }
+    ];
+
+    targets.forEach(t => {
+      if (fs.existsSync(t.ad)) {
+        const raw = fs.readFileSync(t.ad, 'utf8');
+        const rendered = renderAdHtml(raw, config);
+        fs.writeFileSync(t.ad, rendered, 'utf8');
+        fs.writeFileSync(t.index, rendered, 'utf8');
       }
-      if (s.name) {
-        rawPerfil = rawPerfil.replace(/William Navarro/g, s.name);
+      if (fs.existsSync(t.mob)) {
+        const rawMobile = fs.readFileSync(t.mob, 'utf8');
+        const renderedMobile = renderAdHtml(rawMobile, config);
+        fs.writeFileSync(t.mob, renderedMobile, 'utf8');
       }
-      fs.writeFileSync(perfilFile, rawPerfil, 'utf8');
-      console.log('[Sync] perfil.html atualizado em disco!');
-    }
+      if (fs.existsSync(t.perf) && config && config.seller) {
+        let rawPerfil = fs.readFileSync(t.perf, 'utf8');
+        const s = config.seller;
+        if (s.avatar) {
+          rawPerfil = rawPerfil.replace(/(<img\b[^>]*alt=["']Imagem do perfil da loja["'][^>]*src=)(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, (m, g1) => `${g1}"${s.avatar}"`);
+        }
+        if (s.name) {
+          rawPerfil = rawPerfil.replace(/William Navarro/g, s.name);
+        }
+        fs.writeFileSync(t.perf, rawPerfil, 'utf8');
+      }
+    });
+
+    console.log('[Sync] Arquivos de anuncio sincronizados em raiz e public com sucesso!');
     const chkFiles = [path.join(DIR, 'checkout.html'), path.join(DIR, 'public', 'checkout.html')];
     chkFiles.forEach(chkPath => {
       if (fs.existsSync(chkPath) && config && config.product) {
@@ -499,7 +553,7 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (reqPath === '/api/admin/data' || reqPath === '/admin/data') {
+  if (reqPath === '/api/admin/data' || reqPath === '/admin/data' || reqPath === '/api/admin/save' || reqPath === '/admin/save') {
     if (req.method === 'GET') {
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
@@ -868,9 +922,21 @@ async function handleRequest(req, res) {
     else if (loc.includes('bahia') || loc.includes('ba') || loc.includes('salvador')) stateRegion = 'estado-ba/salvador-e-regiao';
 
     const cat = (p.category || '').toLowerCase();
-    let categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
-    if (cat.includes('geladeira') || cat.includes('freezer') || cat.includes('fogão') || cat.includes('lavadora') || cat.includes('micro-ondas') || cat.includes('eletrodom')) {
+    let categorySlug = 'eletrodomesticos/fogoes-fornos-e-cooktops';
+    if (cat.includes('geladeira') || cat.includes('freezer')) {
       categorySlug = 'eletrodomesticos/geladeiras-e-freezers';
+    } else if (cat.includes('fogão') || cat.includes('fogao') || cat.includes('cooktop') || cat.includes('forno')) {
+      categorySlug = 'eletrodomesticos/fogoes-fornos-e-cooktops';
+    } else if (cat.includes('lavar') || cat.includes('secar') || cat.includes('lavadora')) {
+      categorySlug = 'eletrodomesticos/maquinas-de-lavar-e-secar';
+    } else if (cat.includes('micro-ondas') || cat.includes('microondas')) {
+      categorySlug = 'eletrodomesticos/micro-ondas-e-fornos-eletricos';
+    } else if (cat.includes('ar condicionado') || cat.includes('ventilador')) {
+      categorySlug = 'eletrodomesticos/ar-condicionado-e-ventiladores';
+    } else if (cat.includes('eletroport')) {
+      categorySlug = 'eletrodomesticos/eletroportateis-de-cozinha';
+    } else if (cat.includes('aspirador') || cat.includes('limpeza')) {
+      categorySlug = 'eletrodomesticos/aspiradores-e-limpeza';
     } else if (cat.includes('celular') || cat.includes('smartphone') || cat.includes('iphone') || cat.includes('telefonia')) {
       categorySlug = 'celulares-e-telefonia/celulares-e-smartphones';
     } else if (cat.includes('game') || cat.includes('jogos') || cat.includes('console') || cat.includes('playstation') || cat.includes('xbox')) {
@@ -885,7 +951,7 @@ async function handleRequest(req, res) {
       categorySlug = 'autos-e-pecas/carros-vans-e-utilitarios';
     } else {
       const cleanCat = cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      categorySlug = cleanCat || 'eletrodomesticos/geladeiras-e-freezers';
+      categorySlug = cleanCat || 'eletrodomesticos/fogoes-fornos-e-cooktops';
     }
 
     const titleSlug = (p.title || 'anuncio-olx')
@@ -1077,6 +1143,11 @@ if (require.main === module) {
     console.log('- Checkout: http://localhost:' + PORT + '/checkout.html');
   });
 }
+
+handleRequest.renderAdHtml = renderAdHtml;
+handleRequest.syncAdFilesOnDisk = syncAdFilesOnDisk;
+handleRequest.saveCurrentConfig = saveCurrentConfig;
+handleRequest.loadCurrentConfig = loadCurrentConfig;
 
 module.exports = handleRequest;
 

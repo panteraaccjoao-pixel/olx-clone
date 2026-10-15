@@ -251,36 +251,31 @@ const lightboxMarkup = `
 <script id="olx-lightbox-script">
 (function() {
   // Photos array in exact order matching the listing
-  const photos = [
+  let photos = [
     {
       url: '/images/foto-1.jpg',
       fallback: 'https://img.olx.com.br/images/63/630653332183373.jpg',
-      alt: 'iPhone 17 branco - Traseira com mão'
+      alt: 'Foto do Produto - Imagem 1'
     },
     {
       url: '/images/foto-2.jpg',
       fallback: 'https://img.olx.com.br/images/66/662611575228586.jpg',
-      alt: 'iPhone 17 branco - Detalhe da câmera'
+      alt: 'Foto do Produto - Imagem 2'
     },
     {
       url: '/images/foto-4.jpg',
       fallback: 'https://img.olx.com.br/images/68/682620330363369.jpg',
-      alt: 'iPhone 17 branco - Conector USB-C e alto-falante'
+      alt: 'Foto do Produto - Imagem 3'
     },
     {
       url: '/images/foto-3.jpg',
       fallback: 'https://img.olx.com.br/images/67/675611217616864.jpg',
-      alt: 'iPhone 17 branco - Na caixa original'
+      alt: 'Foto do Produto - Imagem 4'
     },
     {
       url: '/images/foto-6.jpg',
       fallback: 'https://img.olx.com.br/images/70/701655217208370.jpg',
-      alt: 'iPhone 17 branco - Saúde da bateria 99% e 150 ciclos'
-    },
-    {
-      url: '/images/foto-5.jpg',
-      fallback: 'https://img.olx.com.br/images/69/699666094916655.jpg',
-      alt: 'iPhone 17 branco - Vista lateral e botões'
+      alt: 'Foto do Produto - Imagem 5'
     }
   ];
 
@@ -296,22 +291,28 @@ const lightboxMarkup = `
 
   if (!modal || !mainImg || !thumbsTrack) return;
 
-  // Build thumbnails dynamically
-  thumbsTrack.innerHTML = '';
-  photos.forEach((photo, idx) => {
-    const thumbBtn = document.createElement('button');
-    thumbBtn.type = 'button';
-    thumbBtn.className = 'olx-photo-lightbox__thumb' + (idx === 0 ? ' is-active' : '');
-    thumbBtn.setAttribute('aria-label', 'Ver foto ' + (idx + 1));
-    thumbBtn.innerHTML = '<img src="' + photo.url + '" alt="' + photo.alt + '" onerror="this.src=\\'' + photo.fallback + '\\'" />';
-    thumbBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      goToSlide(idx);
+  function buildThumbnails() {
+    thumbsTrack.innerHTML = '';
+    photos.forEach((photo, idx) => {
+      const thumbBtn = document.createElement('button');
+      thumbBtn.type = 'button';
+      thumbBtn.className = 'olx-photo-lightbox__thumb' + (idx === currentIndex ? ' is-active' : '');
+      thumbBtn.setAttribute('aria-label', 'Ver foto ' + (idx + 1));
+      thumbBtn.innerHTML = '<img src="' + photo.url + '" alt="' + photo.alt + '" onerror="this.src=\\'' + photo.fallback + '\\'" />';
+      thumbBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        goToSlide(idx);
+      });
+      thumbsTrack.appendChild(thumbBtn);
     });
-    thumbsTrack.appendChild(thumbBtn);
-  });
+  }
+
+  // Build thumbnails dynamically
+  buildThumbnails();
 
   function updateLightboxUI() {
+    if (!photos || photos.length === 0) return;
+    if (currentIndex >= photos.length) currentIndex = 0;
     const photo = photos[currentIndex];
     mainImg.style.opacity = '0';
     setTimeout(() => {
@@ -369,6 +370,17 @@ const lightboxMarkup = `
   // Exposed globally
   window.openOlxLightbox = openLightbox;
   window.closeOlxLightbox = closeLightbox;
+  window.updateOlxLightboxPhotos = function(newImages, title) {
+    if (!Array.isArray(newImages) || newImages.length === 0) return;
+    photos = newImages.map((url, i) => ({
+      url: url,
+      fallback: url,
+      alt: (title || 'Foto') + ' - Imagem ' + (i + 1)
+    }));
+    buildThumbnails();
+    if (currentIndex >= photos.length) currentIndex = 0;
+    updateLightboxUI();
+  };
 
   // Event listeners
   if (closeBtn) {
