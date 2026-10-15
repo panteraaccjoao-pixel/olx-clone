@@ -54,7 +54,7 @@
     if (!isSpecialPage) {
         // Update URL to official OLX category format if at root or generic path
         try {
-          if ((path === '/' || path === '/index.html' || path === '/iphone-17-branco-olx.html' || path === '') && p.title) {
+          if (p.title) {
             const loc = (p.location || '').toLowerCase();
             let stateRegion = 'estado-sp/sao-paulo-e-regiao';
             if (loc.includes('rio de janeiro') || loc.includes('rj')) stateRegion = 'estado-rj/rio-de-janeiro-e-regiao';
@@ -105,7 +105,9 @@
               .slice(0, 90);
 
             const realUrl = `/${stateRegion}/${categorySlug}/${titleSlug}-1541067591`;
-            window.history.replaceState(null, '', realUrl + window.location.search);
+            if (window.location.pathname !== realUrl && (path === '/' || path === '/index.html' || path === '/iphone-17-branco-olx.html' || path === '' || path.includes('geladeiras-e-freezers') || path.includes('fogoes-fornos-e-cooktops') || path.includes('celulares'))) {
+              window.history.replaceState(null, '', realUrl + window.location.search);
+            }
           }
         } catch(e) {}
 
@@ -616,15 +618,33 @@
           const liveLocal = localStorage.getItem('olx_live_config');
           if (liveLocal) {
             const localCfg = JSON.parse(liveLocal);
-            // If local config is newer, keep it and do not revert to stale server
-            if (localCfg.updatedAt && data.updatedAt && data.updatedAt < localCfg.updatedAt) {
-              return;
+            if (localCfg && localCfg.product && localCfg.product.title) {
+              const localTs = Number(localCfg.updatedAt) || 0;
+              const serverTs = Number(data.updatedAt) || 0;
+              // If local config exists and server config is not strictly newer,
+              // KEEP local config and NEVER revert to stale server default!
+              if (serverTs <= localTs) {
+                // If server is behind and local has a saved timestamp, sync server in background
+                if (localTs > 0 && serverTs < localTs) {
+                  fetch('/api/admin/data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(localCfg)
+                  }).catch(() => {});
+                }
+                return;
+              }
             }
           }
         } catch(e) {}
       }
 
       applyData(data);
+      try {
+        if (!isDraft && data && data.product && data.product.title) {
+          localStorage.setItem('olx_live_config', JSON.stringify(data));
+        }
+      } catch(e) {}
     } catch (e) {
       console.error('[ConfigSync Error]', e);
     }

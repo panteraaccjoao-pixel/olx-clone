@@ -1998,9 +1998,26 @@
         } catch (e) {}
 
         if (!data || !data.product) {
-          const fallbackRes = await fetch('/config.json?t=' + Date.now());
-          data = await fallbackRes.json();
+          try {
+            const fallbackRes = await fetch('/config.json?t=' + Date.now());
+            data = await fallbackRes.json();
+          } catch(e) {}
         }
+
+        // Check if user has an active or newer local config in their browser
+        try {
+          const localStr = localStorage.getItem('olx_live_config');
+          if (localStr) {
+            const localCfg = JSON.parse(localStr);
+            if (localCfg && localCfg.product && localCfg.product.title) {
+              const localTs = Number(localCfg.updatedAt) || 0;
+              const serverTs = Number(data && data.updatedAt) || 0;
+              if (localTs >= serverTs || (!serverTs && localTs > 0)) {
+                data = localCfg;
+              }
+            }
+          }
+        } catch(e) {}
 
         currentConfig = data;
         populateAdminUI(data);
