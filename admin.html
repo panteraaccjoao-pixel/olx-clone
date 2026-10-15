@@ -2560,6 +2560,10 @@
         try {
           localStorage.setItem('olx_live_config', JSON.stringify(officialPayload));
           localStorage.removeItem('olx_draft_config');
+          try {
+            const cleanPath = getPollutedAdPath();
+            document.cookie = "olx_ad_path=" + encodeURIComponent(cleanPath) + "; path=/; max-age=31536000; SameSite=Lax";
+          } catch(e) {}
         } catch(e) {}
 
         const res = await fetch('/api/admin/data', {
@@ -2595,6 +2599,10 @@
         try {
           localStorage.setItem('olx_live_config', JSON.stringify(officialPayload));
           localStorage.removeItem('olx_draft_config');
+          try {
+            const cleanPath = getPollutedAdPath();
+            document.cookie = "olx_ad_path=" + encodeURIComponent(cleanPath) + "; path=/; max-age=31536000; SameSite=Lax";
+          } catch(e) {}
         } catch(e) {}
 
         const res = await fetch('/api/admin/data', {

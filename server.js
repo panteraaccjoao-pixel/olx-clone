@@ -989,7 +989,17 @@ async function handleRequest(req, res) {
       const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const isDraft = urlObj.searchParams.get('draft') === '1' || urlObj.searchParams.get('preview') === '1';
       const cfg = loadCurrentConfig(isDraft);
-      const realPath = generateRealOlxPath(cfg);
+
+      let realPath = null;
+      const cookieHeader = req.headers.cookie || '';
+      const cookieMatch = cookieHeader.match(/(?:^|; )olx_ad_path=([^;]*)/);
+      if (cookieMatch && cookieMatch[1]) {
+        realPath = decodeURIComponent(cookieMatch[1]);
+      }
+      if (!realPath) {
+        realPath = generateRealOlxPath(cfg);
+      }
+
       res.writeHead(302, {
         'Location': realPath + (urlObj.search || ''),
         'Cache-Control': 'no-cache, no-store, must-revalidate'
