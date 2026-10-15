@@ -192,6 +192,35 @@ function renderAdHtml(rawHtml, config) {
     html = html.replace(/<head[^>]*>/i, '$&\n  <base href="/">');
   }
 
+  // Injetar escudo anti-flicker no <head> para impedir exibição temporária de anúncio antigo se local tiver produto novo
+  if (!html.includes('olx-zero-flicker-shield')) {
+    const shieldScript = `<script id="olx-zero-flicker-shield">
+(function() {
+  try {
+    var live = localStorage.getItem('olx_live_config');
+    if (live) {
+      var cfg = JSON.parse(live);
+      if (cfg && cfg.product && cfg.product.title) {
+        var t = cfg.product.title;
+        if (!document.title || !document.title.includes(t.substring(0, 15))) {
+          document.write('<style id="olx-render-shield">body { visibility: hidden !important; opacity: 0 !important; }<\\/style>');
+          setTimeout(function() {
+            var s = document.getElementById('olx-render-shield');
+            if (s) s.remove();
+            if (document.body) {
+              document.body.style.visibility = 'visible';
+              document.body.style.opacity = '1';
+            }
+          }, 1200);
+        }
+      }
+    }
+  } catch(e) {}
+})();
+</script>`;
+    html = html.replace(/<head[^>]*>/i, '$&\n  ' + shieldScript);
+  }
+
   // 2. <title>
   if (p.title) {
     html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${p.title} - ${p.category || 'OLX'} | OLX</title>`);

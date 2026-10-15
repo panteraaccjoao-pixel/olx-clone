@@ -5,6 +5,30 @@
  url: https://sp.olx.com.br/sao-paulo-e-regiao/eletrodomesticos/geladeira-brastemp-frost-free-duplex-429l-1541067591?rec=u&custom_tag=web_vertical_homes&gallery_id=recents_reduced_price_3000&tab_id=eletronicos-e-celulares&is_fallback=false&page=home&rec_detail_location=vertical_homes&rec_detail_engine=search&rec_detail_recommendation=recents_reduced_price_filtered_by_category&lis=web_vertical_homes%7C3000%7Crecents_reduced_price_3000%7C1 
  saved date: Fri Oct 09 2026 21:35:40 GMT-0300 (Horário Padrão de Brasília)
 --><meta charset=utf-8>
+<script id="olx-zero-flicker-shield">
+(function() {
+  try {
+    var live = localStorage.getItem('olx_live_config');
+    if (live) {
+      var cfg = JSON.parse(live);
+      if (cfg && cfg.product && cfg.product.title) {
+        var t = cfg.product.title;
+        if (!document.title || !document.title.includes(t.substring(0, 15))) {
+          document.write('<style id="olx-render-shield">body { visibility: hidden !important; opacity: 0 !important; }<\/style>');
+          setTimeout(function() {
+            var s = document.getElementById('olx-render-shield');
+            if (s) s.remove();
+            if (document.body) {
+              document.body.style.visibility = 'visible';
+              document.body.style.opacity = '1';
+            }
+          }, 1200);
+        }
+      }
+    }
+  } catch(e) {}
+})();
+</script>
 <script id="olx-viewport-router">
 (function() {
   // One-time check on initial load only. No resize listener to avoid reload loops on scroll.

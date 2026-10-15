@@ -34,10 +34,25 @@
     ].join('||');
   }
 
+  function removeShield() {
+    try {
+      var s = document.getElementById('olx-render-shield');
+      if (s) s.remove();
+      if (document.body) {
+        document.body.style.visibility = 'visible';
+        document.body.style.opacity = '1';
+      }
+    } catch(e) {}
+  }
+
   function applyData(data) {
-    if (!data || !data.product) return;
+    if (!data || !data.product) {
+      removeShield();
+      return;
+    }
     const key = getConfigKey(data);
     if (key && key === lastAppliedKey) {
+      removeShield();
       return; // Already applied, skip DOM mutations to prevent flicker!
     }
     lastAppliedKey = key;
@@ -576,6 +591,7 @@
         }
       }
 
+    removeShield();
   }
 
   const isDraft = window.location.search.includes('preview') || window.location.search.includes('draft');
@@ -585,7 +601,8 @@
     try {
       const draftLocal = localStorage.getItem('olx_draft_config');
       if (draftLocal) applyData(JSON.parse(draftLocal));
-    } catch(e) {}
+      else removeShield();
+    } catch(e) { removeShield(); }
   } else {
     let localApplied = false;
     try {
@@ -601,6 +618,8 @@
 
     if (!localApplied && window.__INITIAL_OLX_CONFIG__) {
       applyData(window.__INITIAL_OLX_CONFIG__);
+    } else if (!localApplied) {
+      removeShield();
     }
   }
 
