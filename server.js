@@ -341,8 +341,18 @@ function renderAdHtml(rawHtml, config) {
     });
   }
   if (s.lastAccess) {
-    html = html.replace(/(<span[^>]*class=["']?[^"'>]*(?:advc-mini-profile__status|text-neutral-110)[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, (m, g1, g2, g3) => g1 + s.lastAccess + g3);
-    html = html.replace(/Último acesso há [^<]+/gi, s.lastAccess);
+    html = html.replace(/(<span[^>]*class=["']?[^"'>]*(?:advc-mini-profile__status-text|typo-caption text-neutral-120)[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${s.lastAccess}$3`);
+  }
+  // Guarantee status-icon is ALWAYS completely empty
+  html = html.replace(/(<span[^>]*class=["']?[^"'>]*advc-mini-profile__status-icon[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1$3`);
+
+  if (s.memberSince) {
+    const memText = s.memberSince.startsWith('Na OLX desde') ? s.memberSince : 'Na OLX desde ' + s.memberSince;
+    html = html.replace(/(<span[^>]*class=["']?[^"'>]*advc-mini-profile__member-since[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${memText}$3`);
+  }
+  if (s.location || p.location) {
+    const locText = s.location || p.location;
+    html = html.replace(/(<span[^>]*class=["']?[^"'>]*advc-mini-profile__location[^"'>]*["']?[^>]*>)([\s\S]*?)(<\/span>)/gi, `$1${locText}$3`);
   }
 
   // 11. Atualizar Localização no Mobile

@@ -198,7 +198,7 @@
 
         // Location - Desktop & Mobile
         if (p.location) {
-          document.querySelectorAll('.advc-mini-profile__location, .typo-body-small.text-neutral-120.font-regular').forEach(el => {
+          document.querySelectorAll('.advc-mini-profile__location').forEach(el => {
             el.textContent = p.location;
           });
           // Mobile location section
@@ -207,7 +207,7 @@
           const mobLocState = document.querySelector('.advc-location span.typo-body-small');
           if (mobLocState) mobLocState.textContent = p.location;
 
-          document.querySelectorAll('span').forEach(el => {
+          document.querySelectorAll('span:not(.advc-mini-profile__member-since)').forEach(el => {
             if (el.children.length === 0 && (el.textContent === 'Vila Guilherme, São Paulo - SP' || el.textContent === 'Vila Guilherme' || el.textContent === 'Nova Gerty')) {
               el.textContent = p.location;
             }
@@ -349,12 +349,29 @@
           }
         });
 
-        // Seller Last access on mobile
+        // Seller Last access on desktop & mobile
         if (s && s.lastAccess) {
-          document.querySelectorAll('.advc-mini-profile__status span, .advc-mini-profile__activity-meta span').forEach(el => {
-            if (el.textContent.includes('Último acesso') || el.textContent.includes('acesso')) {
-              el.textContent = s.lastAccess;
-            }
+          document.querySelectorAll('.advc-mini-profile__status-text, .advc-mini-profile__activity-meta span').forEach(el => {
+            el.textContent = s.lastAccess;
+          });
+          document.querySelectorAll('.advc-mini-profile__status-icon').forEach(el => {
+            el.textContent = '';
+          });
+        }
+
+        // Seller Member Since on desktop & mobile
+        if (s && s.memberSince) {
+          const memText = s.memberSince.startsWith('Na OLX desde') ? s.memberSince : 'Na OLX desde ' + s.memberSince;
+          document.querySelectorAll('.advc-mini-profile__member-since').forEach(el => {
+            el.textContent = memText;
+          });
+        }
+
+        // Seller Location on product page
+        if ((s && s.location) || (p && p.location)) {
+          const sellerLoc = (s && s.location) || p.location;
+          document.querySelectorAll('.advc-mini-profile__location').forEach(el => {
+            el.textContent = sellerLoc;
           });
         }
 
